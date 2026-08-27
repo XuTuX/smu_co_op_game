@@ -68,7 +68,7 @@
   justify-self: center;
   width: min(100%, calc((100vh - 150px) * 1.5));
   max-height: calc(100vh - 150px);
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 1200 / 894;
   border-radius: 14px;
   box-shadow: 5px 6px 0 var(--ink);
 }

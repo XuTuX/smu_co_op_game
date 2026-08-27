@@ -7,15 +7,17 @@ class ObstacleDodgeGame {
     this.canvas = document.getElementById('trafficCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.canvas.width = 1200;
-    this.canvas.height = 800;
+    this.canvas.height = 894;
 
     this.inputManager = new InputManager();
     this.soundEngine = new SoundEngine();
     this.network = new NetworkClient(this.inputManager, (connected) => this.updateHardwareStatus(connected));
 
-    this.arena = { left: 120, right: 1080, top: 24, bottom: 776, columns: 8 };
+    this.arena = { left: 120, right: 1080, top: 24, bottom: 870, columns: 8, rows: 9 };
     this.cellWidth = (this.arena.right - this.arena.left) / this.arena.columns;
     this.verticalStep = 94;
+    this.doubleWaveScore = 150;
+    this.laserUnlockScore = 300;
     this.player = {
       x: 660, y: 541, targetX: 660, targetY: 541,
       radius: 27, invulnerable: 0, hop: 0
@@ -152,11 +154,14 @@ class ObstacleDodgeGame {
   update(dt) {
     this.updatePlayer(dt);
     this.elapsed += dt;
+    this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
 
-    const nextLevel = Math.min(5, 1 + Math.floor(this.elapsed / 15));
+    const nextLevel = Math.min(5, 1 + Math.floor(this.score / this.doubleWaveScore));
     if (nextLevel !== this.level) {
       this.level = nextLevel;
-      if (this.level === 3) this.laserSpawnTimer = 1.8;
+    }
+    if (this.score >= this.laserUnlockScore && !Number.isFinite(this.laserSpawnTimer)) {
+      this.laserSpawnTimer = 1.8;
     }
 
     this.downSpawnTimer -= dt;
@@ -177,7 +182,7 @@ class ObstacleDodgeGame {
       this.collectibleTimer = 4.2 + Math.random() * 1.8;
     }
 
-    if (this.level >= 3) {
+    if (this.score >= this.laserUnlockScore) {
       this.laserSpawnTimer -= dt;
       if (this.laserSpawnTimer <= 0 && this.lasers.length < 2) {
         this.spawnLaser();
@@ -193,7 +198,7 @@ class ObstacleDodgeGame {
   }
 
   getWaveSize(type) {
-    if (this.elapsed < 10) return 1;
+    if (this.score < this.doubleWaveScore) return 1;
     const key = type === 'down' ? 'nextDownWaveIsDouble' : 'nextSideWaveIsDouble';
     const size = this[key] ? 2 : 1;
     this[key] = !this[key];
@@ -305,9 +310,9 @@ class ObstacleDodgeGame {
   spawnSideBlock(excludedRows = new Set()) {
     const playerRow = Math.round((this.player.targetY - this.arena.top - this.verticalStep / 2) / this.verticalStep);
     const rowOptions = this.level <= 2 ? [-1, 0, 1] : [-2, -1, 0, 1, 2];
-    const nearbyRows = [...new Set(rowOptions.map((offset) => Math.max(0, Math.min(7, playerRow + offset))))]
+    const nearbyRows = [...new Set(rowOptions.map((offset) => Math.max(0, Math.min(this.arena.rows - 1, playerRow + offset))))]
       .filter((row) => !excludedRows.has(row));
-    const fallbackRows = Array.from({ length: 8 }, (_, row) => row)
+    const fallbackRows = Array.from({ length: this.arena.rows }, (_, row) => row)
       .filter((row) => !excludedRows.has(row));
     const pool = nearbyRows.length ? nearbyRows : fallbackRows;
     const row = pool[Math.floor(Math.random() * pool.length)];
@@ -318,7 +323,7 @@ class ObstacleDodgeGame {
       row,
       x: direction < 0 ? this.arena.right + 75 : this.arena.left - 75,
       y: this.arena.top + row * this.verticalStep + this.verticalStep / 2,
-      width: 82,
+      width: 68,
       height: 68,
       vx: direction * (180 + (this.level - 1) * 38),
       vy: 0,
@@ -342,7 +347,7 @@ class ObstacleDodgeGame {
   spawnLaser() {
     const orientation = this.nextLaserOrientation;
     this.nextLaserOrientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
-    const laneCount = orientation === 'horizontal' ? 8 : this.arena.columns;
+    const laneCount = orientation === 'horizontal' ? this.arena.rows : this.arena.columns;
     const occupiedLanes = new Set(this.lasers
       .filter((laser) => laser.orientation === orientation)
       .map((laser) => laser.lane));
@@ -473,7 +478,7 @@ class ObstacleDodgeGame {
     const ctx = this.ctx;
     ctx.fillStyle = '#132b32';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    for (let row = 0; row < 8; row++) {
+    for (let row = 0; row < this.arena.rows; row++) {
       for (let column = 0; column < this.arena.columns; column++) {
         ctx.fillStyle = (row + column) % 2 === 0 ? '#315a4b' : '#2b5145';
         ctx.fillRect(this.arena.left + column * this.cellWidth, this.arena.top + row * this.verticalStep, this.cellWidth, this.verticalStep);
@@ -666,6 +671,8 @@ class ObstacleDodgeGame {
     this.canvas.dataset.sideHazards = String(this.hazards.filter((hazard) => hazard.type === 'side').length);
     this.canvas.dataset.leftMoving = String(this.hazards.filter((hazard) => hazard.type === 'side' && hazard.vx < 0).length);
     this.canvas.dataset.rightMoving = String(this.hazards.filter((hazard) => hazard.type === 'side' && hazard.vx > 0).length);
+    this.canvas.dataset.lastDownWave = String(this.lastDownWaveSize);
+    this.canvas.dataset.lastSideWave = String(this.lastSideWaveSize);
     this.canvas.dataset.lasers = String(this.lasers.length);
     this.canvas.dataset.laserWarnings = String(this.lasers.filter((laser) => laser.phase === 'warning').length);
     this.canvas.dataset.activeLasers = String(this.lasers.filter((laser) => laser.phase === 'active').length);
