@@ -1,6 +1,5 @@
 .traffic-brand { background: var(--orange); color: var(--paper); }
 .mode-link.traffic-active { background: var(--orange); color: var(--paper); }
-.traffic-level { background: var(--orange); color: var(--paper); }
 .traffic-stats { grid-template-columns: 220px 1fr 250px; }
 .traffic-lives-card { background: var(--pink); transform: rotate(1deg); }
 .traffic-lives-card strong { display: block; margin: 12px 0 9px; color: #d93434; font-size: clamp(36px, 5vw, 60px); letter-spacing: .02em; white-space: nowrap; }
@@ -83,7 +82,6 @@
   .traffic-toast { top: 12%; padding: 7px 12px; }
   .traffic-page.is-playing .traffic-card { padding: 8px; }
   .traffic-page.is-playing .game-card-label { font-size: 10px; }
-  .traffic-page.is-playing .difficulty-badge { margin: 0; padding: 4px 8px; }
   .traffic-page.is-playing .traffic-stats .stat-block { min-height: 54px; padding: 6px 9px; gap: 8px; }
   .traffic-page.is-playing .traffic-stats .stat-block strong { font-size: 29px; }
   .traffic-page.is-playing .traffic-stats .stat-label,
