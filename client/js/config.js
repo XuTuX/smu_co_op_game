@@ -5,7 +5,8 @@ const CONFIG = {
   CANVAS_WIDTH: 1200,
   CANVAS_HEIGHT: 800,
 
-  GAME_DURATION: 100,
+  GAME_DURATION: 60,
+  PARKING_STAGE_DURATION: 100,
 
   SCORING: {
     PARKING_SUCCESS: 100,
@@ -37,7 +38,6 @@ const CONFIG = {
     ANGLE_TOLERANCE_DEG: 15,       // Max rotation error in degrees (±15°)
     MAX_STOP_SPEED: 0.25,          // Velocity threshold to be considered stopped
     DWELL_TIME_SEC: 1.0,           // Time to hold position in seconds
-    POINTS_PER_SUCCESS: 100,
     CORNER_INSIDE_TOLERANCE: 12    // Padding margin for 4-corner containment
   },
 

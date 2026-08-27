@@ -29,7 +29,7 @@ class Game {
     this.stageParkCount = 0;
     this.stageScore = 0;
     this.level = 1;
-    this.timeRemaining = CONFIG.GAME_DURATION;
+    this.timeRemaining = CONFIG.PARKING_STAGE_DURATION;
     this.lastTime = 0;
     this.readyActions = ['forward', 'backward', 'left', 'right'];
     this.readyPlayers = this.createReadyState();
@@ -156,6 +156,7 @@ class Game {
     this.ui.hideStartScreen();
     this.ui.hideGameOver();
     this.ui.hideStageTransition();
+    this.inputManager.resetAll();
 
     // Reset game variables
     this.score = 0;
@@ -163,9 +164,9 @@ class Game {
     this.stageParkCount = 0;
     this.stageScore = 0;
     this.level = 1;
-    this.timeRemaining = CONFIG.GAME_DURATION;
+    this.timeRemaining = CONFIG.PARKING_STAGE_DURATION;
     this.ui.updateScore(0);
-    this.ui.updateTime(CONFIG.GAME_DURATION);
+    this.ui.updateTime(CONFIG.PARKING_STAGE_DURATION);
     this.particles = [];
     this.skidMarks = [];
 
@@ -253,7 +254,7 @@ class Game {
         this.parkingJudge.setTargetSpot(nextSpot);
         this.stageParkCount = 0;
         this.stageScore = 0;
-        this.timeRemaining = CONFIG.GAME_DURATION;
+        this.timeRemaining = CONFIG.PARKING_STAGE_DURATION;
         this.ui.updateTime(this.timeRemaining);
         this.particles = [];
         this.ui.hideStageTransition();

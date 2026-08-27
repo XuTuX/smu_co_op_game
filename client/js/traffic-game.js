@@ -785,7 +785,6 @@ class ObstacleDodgeGame {
     document.getElementById('traffic-gameover-badge').textContent = survivedFullRound ? "TIME'S UP!" : 'GAME OVER';
     document.getElementById('traffic-gameover-message').textContent = resultMessage;
     document.getElementById('traffic-final-score').textContent = this.score;
-    document.getElementById('traffic-final-time').textContent = `${Math.min(CONFIG.GAME_DURATION, Math.floor(this.elapsed))}s`;
     document.getElementById('traffic-gameover-modal').classList.remove('hidden');
   }
 

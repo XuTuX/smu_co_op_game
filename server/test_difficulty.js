@@ -56,10 +56,16 @@ assert.strictEqual(easySpot.width, easy.spotWidth);
 assert.strictEqual(hardSpot.width, hard.spotWidth);
 assert.strictEqual(new Set(stageGrounds).size, 3, 'Every stage must have a distinct ground theme');
 assert.strictEqual(new Set(stageNames).size, 3, 'Every stage must have a distinct map name');
-assert.strictEqual(CONFIG.GAME_DURATION, 100, 'Every stage must start with 100 seconds');
+assert.strictEqual(CONFIG.PARKING_STAGE_DURATION, 100, 'Every parking stage must start with 100 seconds');
+assert.strictEqual(CONFIG.GAME_DURATION, 60, 'The obstacle game duration must remain unchanged');
 assert.strictEqual(CONFIG.SCORING.PARKING_SUCCESS, 100);
 assert.strictEqual(CONFIG.SCORING.STAGE_TIME_MULTIPLIER, 3);
 assert.strictEqual(CONFIG.SCORING.ALL_CLEAR_BONUS, 300);
+assert.strictEqual(
+  3 * ((2 * CONFIG.SCORING.PARKING_SUCCESS) + (CONFIG.PARKING_STAGE_DURATION * CONFIG.SCORING.STAGE_TIME_MULTIPLIER)) + CONFIG.SCORING.ALL_CLEAR_BONUS,
+  1800,
+  'The theoretical maximum score must remain easy to explain'
+);
 
 judge.setDifficulty(hard);
 assert.strictEqual(judge.rules.angleToleranceDeg, hard.angleToleranceDeg);
