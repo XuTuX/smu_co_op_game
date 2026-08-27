@@ -1,7 +1,7 @@
 {
   "name": "esp32-bus-parking-server",
   "version": "1.0.0",
-  "description": "ESP32 4-button cooperative bus parking game server",
+  "description": "ESP32 4-button cooperative bus parking and obstacle-dodge game server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

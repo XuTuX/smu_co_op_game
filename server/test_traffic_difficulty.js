@@ -26,7 +26,11 @@ Object.assign(game, {
   nextLaserOrientation: 'horizontal',
   lastLaserWaveSize: 0,
   lasers: [],
-  arena: { top: 24, left: 120, rows: 9, columns: 11 },
+  lives: 1,
+  heart: null,
+  heartSpawnTimer: Infinity,
+  heartOpportunityUsed: false,
+  arena: { top: 24, bottom: 870, left: 120, right: 1480, rows: 9, columns: 11 },
   verticalStep: 94,
   cellWidth: (1480 - 120) / 11
 });
@@ -72,4 +76,14 @@ assert.ok(game.getSideSpeed() > earlySideSpeed, 'Side obstacles must speed up wi
 assert.ok(game.getDownSpawnDelay() < earlyDownDelay, 'Falling obstacles must spawn more often with score');
 assert.ok(game.getSideSpawnDelay() < earlySideDelay, 'Side obstacles must spawn more often with score');
 
-console.log('✅ TRAFFIC DIFFICULTY TEST PASSED: progressive obstacles + paired 500-point lasers');
+const starSpeed = game.pickStarSpeed();
+const heartSpeed = game.pickHeartSpeed();
+assert.ok(starSpeed >= 180, 'Stars must include a genuinely fast movement band');
+assert.ok(heartSpeed > starSpeed, 'The extra-life heart must be harder to catch than a star');
+game.scheduleHeartDrop();
+assert.strictEqual(game.heartSpawnTimer, 2.5, 'The heart must wait a random 2-3 seconds at one life');
+game.heartSpawnTimer = 9;
+game.scheduleHeartDrop();
+assert.strictEqual(game.heartSpawnTimer, 9, 'The heart opportunity must only be scheduled once per game');
+
+console.log('✅ TRAFFIC DIFFICULTY TEST PASSED: progressive hazards + fast pickups + one-life heart');

@@ -1,5 +1,5 @@
 /**
- * Four-player block dodge mode.
+ * Four-player 11x9 grid dodge mode with moving hazards, lasers, and pickups.
  * P1 moves up, P2 down, P3 left, and P4 right.
  */
 class ObstacleDodgeGame {
@@ -34,6 +34,9 @@ class ObstacleDodgeGame {
     this.hazards = [];
     this.lasers = [];
     this.collectibles = [];
+    this.heart = null;
+    this.heartSpawnTimer = Infinity;
+    this.heartOpportunityUsed = false;
     this.trail = [];
 
     this.state = 'TITLE';
@@ -131,6 +134,9 @@ class ObstacleDodgeGame {
     this.hazards = [];
     this.lasers = [];
     this.collectibles = [];
+    this.heart = null;
+    this.heartSpawnTimer = Infinity;
+    this.heartOpportunityUsed = false;
     this.trail = [];
     this.downSpawnTimer = 0.9;
     this.sideSpawnTimer = 3.8;
@@ -221,6 +227,7 @@ class ObstacleDodgeGame {
     this.updateHazards(dt);
     this.updateLasers(dt);
     this.updateCollectibles(dt);
+    this.updateHeart(dt);
     this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
     this.updateHUD();
   }
@@ -443,9 +450,10 @@ class ObstacleDodgeGame {
 
   pickStarSpeed() {
     return this.pickSpeedBand([
-      [48, 66],
-      [78, 102],
-      [118, 148]
+      [65, 90],
+      [115, 155],
+      [180, 230],
+      [250, 315]
     ]);
   }
 
@@ -456,6 +464,52 @@ class ObstacleDodgeGame {
     star.vx = Math.cos(nextAngle) * speed;
     star.vy = Math.sin(nextAngle) * speed;
     star.turnTimer = 0.35 + Math.random() * 0.75;
+  }
+
+  scheduleHeartDrop() {
+    if (this.lives !== 1 || this.heartOpportunityUsed) return;
+    this.heartOpportunityUsed = true;
+    this.heartSpawnTimer = 2 + Math.random();
+  }
+
+  spawnHeart() {
+    let x = this.arena.left + 80 + Math.random() * (this.arena.right - this.arena.left - 160);
+    let y = this.arena.top + 80 + Math.random() * (this.arena.bottom - this.arena.top - 160);
+    for (let attempt = 0; attempt < 12 && Math.hypot(x - this.player.x, y - this.player.y) < 260; attempt++) {
+      x = this.arena.left + 80 + Math.random() * (this.arena.right - this.arena.left - 160);
+      y = this.arena.top + 80 + Math.random() * (this.arena.bottom - this.arena.top - 160);
+    }
+    const speed = this.pickHeartSpeed();
+    const angle = Math.random() * Math.PI * 2;
+    this.heart = {
+      x,
+      y,
+      radius: 17,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      rotation: 0,
+      age: 0,
+      life: 9 + Math.random() * 3,
+      turnTimer: 0.2 + Math.random() * 0.35,
+      wobblePhase: Math.random() * Math.PI * 2
+    };
+  }
+
+  pickHeartSpeed() {
+    return this.pickSpeedBand([
+      [240, 285],
+      [305, 355],
+      [380, 430]
+    ]);
+  }
+
+  redirectHeart(heart, angleOffset = 0) {
+    const currentAngle = Math.atan2(heart.vy, heart.vx);
+    const nextAngle = currentAngle + angleOffset + (Math.random() - 0.5) * Math.PI * 1.25;
+    const speed = this.pickHeartSpeed();
+    heart.vx = Math.cos(nextAngle) * speed;
+    heart.vy = Math.sin(nextAngle) * speed;
+    heart.turnTimer = 0.2 + Math.random() * 0.35;
   }
 
   spawnLaser() {
@@ -535,41 +589,7 @@ class ObstacleDodgeGame {
   updateCollectibles(dt) {
     for (let index = this.collectibles.length - 1; index >= 0; index--) {
       const star = this.collectibles[index];
-      star.age += dt;
-      star.life -= dt;
-      star.turnTimer -= dt;
-      if (star.turnTimer <= 0) this.redirectStar(star);
-
-      const curve = Math.sin(star.age * 5.2 + star.wobblePhase) * 0.85 * dt;
-      const cos = Math.cos(curve);
-      const sin = Math.sin(curve);
-      const curvedVx = star.vx * cos - star.vy * sin;
-      star.vy = star.vx * sin + star.vy * cos;
-      star.vx = curvedVx;
-      star.x += star.vx * dt;
-      star.y += star.vy * dt;
-      star.rotation += dt * (2.4 + Math.hypot(star.vx, star.vy) / 70);
-
-      let bounced = false;
-      if (star.x - star.radius < this.arena.left) {
-        star.x = this.arena.left + star.radius;
-        star.vx = Math.abs(star.vx);
-        bounced = true;
-      } else if (star.x + star.radius > this.arena.right) {
-        star.x = this.arena.right - star.radius;
-        star.vx = -Math.abs(star.vx);
-        bounced = true;
-      }
-      if (star.y - star.radius < this.arena.top) {
-        star.y = this.arena.top + star.radius;
-        star.vy = Math.abs(star.vy);
-        bounced = true;
-      } else if (star.y + star.radius > this.arena.bottom) {
-        star.y = this.arena.bottom - star.radius;
-        star.vy = -Math.abs(star.vy);
-        bounced = true;
-      }
-      if (bounced) this.redirectStar(star);
+      this.advanceMovingPickup(star, dt, this.redirectStar, 0.85);
 
       const dx = this.player.x - star.x;
       const dy = this.player.y - star.y;
@@ -582,6 +602,70 @@ class ObstacleDodgeGame {
       }
       if (star.life <= 0) this.collectibles.splice(index, 1);
     }
+  }
+
+  updateHeart(dt) {
+    if (this.lives <= 0) return;
+    if (Number.isFinite(this.heartSpawnTimer)) {
+      this.heartSpawnTimer -= dt;
+      if (this.heartSpawnTimer <= 0) {
+        this.heartSpawnTimer = Infinity;
+        if (this.lives === 1 && !this.heart) this.spawnHeart();
+      }
+    }
+    if (!this.heart) return;
+
+    const heart = this.heart;
+    this.advanceMovingPickup(heart, dt, this.redirectHeart, 1.2);
+    const dx = this.player.x - heart.x;
+    const dy = this.player.y - heart.y;
+    if (dx * dx + dy * dy <= (this.player.radius + heart.radius) ** 2) {
+      this.heart = null;
+      this.lives = Math.min(3, this.lives + 1);
+      this.soundEngine.playSuccess();
+      this.showToast('♥ 생명 +1');
+      this.updateHUD();
+    } else if (heart.life <= 0) {
+      this.heart = null;
+    }
+  }
+
+  advanceMovingPickup(pickup, dt, redirect, curveStrength) {
+    pickup.age += dt;
+    pickup.life -= dt;
+    pickup.turnTimer -= dt;
+    if (pickup.turnTimer <= 0) redirect.call(this, pickup);
+
+    const curve = Math.sin(pickup.age * 5.2 + pickup.wobblePhase) * curveStrength * dt;
+    const cos = Math.cos(curve);
+    const sin = Math.sin(curve);
+    const curvedVx = pickup.vx * cos - pickup.vy * sin;
+    pickup.vy = pickup.vx * sin + pickup.vy * cos;
+    pickup.vx = curvedVx;
+    pickup.x += pickup.vx * dt;
+    pickup.y += pickup.vy * dt;
+    pickup.rotation += dt * (2.4 + Math.hypot(pickup.vx, pickup.vy) / 70);
+
+    let bounced = false;
+    if (pickup.x - pickup.radius < this.arena.left) {
+      pickup.x = this.arena.left + pickup.radius;
+      pickup.vx = Math.abs(pickup.vx);
+      bounced = true;
+    } else if (pickup.x + pickup.radius > this.arena.right) {
+      pickup.x = this.arena.right - pickup.radius;
+      pickup.vx = -Math.abs(pickup.vx);
+      bounced = true;
+    }
+    if (pickup.y - pickup.radius < this.arena.top) {
+      pickup.y = this.arena.top + pickup.radius;
+      pickup.vy = Math.abs(pickup.vy);
+      bounced = true;
+    } else if (pickup.y + pickup.radius > this.arena.bottom) {
+      pickup.y = this.arena.bottom - pickup.radius;
+      pickup.vy = -Math.abs(pickup.vy);
+      bounced = true;
+    }
+    if (bounced) redirect.call(this, pickup);
   }
 
   hazardCollidesWithPlayer(hazard) {
@@ -597,6 +681,7 @@ class ObstacleDodgeGame {
   handleCollision() {
     this.lives--;
     this.player.invulnerable = 1.4;
+    if (this.lives === 1) this.scheduleHeartDrop();
     this.soundEngine.playCrash();
     this.showToast(this.lives > 0 ? `충돌! 남은 목숨 ${this.lives}` : '게임 종료');
     this.updateHUD();
@@ -759,6 +844,37 @@ class ObstacleDodgeGame {
     }
   }
 
+  drawHeart() {
+    if (!this.heart) return;
+    const heart = this.heart;
+    const ctx = this.ctx;
+    const pulse = 1 + Math.sin(heart.age * 10) * 0.08;
+    ctx.save();
+    ctx.translate(heart.x, heart.y);
+    ctx.rotate(Math.sin(heart.rotation * 0.18) * 0.18);
+    ctx.scale(pulse, pulse);
+    ctx.shadowColor = '#ff496c';
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#ff4f70';
+    ctx.strokeStyle = '#28231f';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 18);
+    ctx.bezierCurveTo(-27, 1, -22, -19, -8, -19);
+    ctx.bezierCurveTo(-2, -19, 0, -14, 0, -10);
+    ctx.bezierCurveTo(0, -14, 2, -19, 8, -19);
+    ctx.bezierCurveTo(22, -19, 27, 1, 0, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,.72)';
+    ctx.beginPath();
+    ctx.ellipse(-8, -10, 4, 6, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   drawCubeBlock(hazard) {
     const ctx = this.ctx;
     const scale = Math.min(hazard.width, hazard.height) / 68;
@@ -871,6 +987,7 @@ class ObstacleDodgeGame {
     this.drawLasers();
     this.drawHazards();
     this.drawCollectibles();
+    this.drawHeart();
     this.drawPlayer();
     this.canvas.dataset.gameState = this.state;
     this.canvas.dataset.playerX = this.player.x.toFixed(2);
@@ -902,6 +1019,13 @@ class ObstacleDodgeGame {
     this.canvas.dataset.starVx = trackedStar ? trackedStar.vx.toFixed(1) : '0';
     this.canvas.dataset.starVy = trackedStar ? trackedStar.vy.toFixed(1) : '0';
     this.canvas.dataset.starSpeed = trackedStar ? Math.hypot(trackedStar.vx, trackedStar.vy).toFixed(1) : '0';
+    this.canvas.dataset.heart = this.heart ? '1' : '0';
+    this.canvas.dataset.heartSpawnTimer = Number.isFinite(this.heartSpawnTimer)
+      ? Math.max(0, this.heartSpawnTimer).toFixed(2)
+      : 'inactive';
+    this.canvas.dataset.heartSpeed = this.heart
+      ? Math.hypot(this.heart.vx, this.heart.vy).toFixed(1)
+      : '0';
     this.canvas.dataset.bonusScore = String(this.bonusScore);
   }
 
