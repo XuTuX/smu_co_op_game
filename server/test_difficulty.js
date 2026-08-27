@@ -27,29 +27,39 @@ assert.ok(easy.dwellTimeSec < medium.dwellTimeSec && medium.dwellTimeSec < hard.
 
 map.setStage(1);
 const easySpot = map.getSpotForLevel(1, null, map.spawnPoint.x, map.spawnPoint.y);
-assert.strictEqual(map.parkingSpots.length, 1, 'Stage 1 must show exactly one parking bay');
+const easySpot2 = map.getSpotForLevel(1, easySpot.id, easySpot.x, easySpot.y);
+assert.strictEqual(map.parkingSpots.length, 2, 'Stage 1 must provide two parking objectives');
 const stageGrounds = [map.theme.ground];
 const stageNames = [map.stageName];
 
 map.setStage(2);
 const mediumSpot = map.getSpotForLevel(2, null, map.spawnPoint.x, map.spawnPoint.y);
-assert.strictEqual(map.parkingSpots.length, 1, 'Stage 2 must show exactly one parking bay');
+const mediumSpot2 = map.getSpotForLevel(2, mediumSpot.id, mediumSpot.x, mediumSpot.y);
+assert.strictEqual(map.parkingSpots.length, 2, 'Stage 2 must provide two parking objectives');
 stageGrounds.push(map.theme.ground);
 stageNames.push(map.stageName);
 
 map.setStage(3);
 const hardSpot = map.getSpotForLevel(3, null, map.spawnPoint.x, map.spawnPoint.y);
-assert.strictEqual(map.parkingSpots.length, 1, 'Stage 3 must show exactly one parking bay');
+const hardSpot2 = map.getSpotForLevel(3, hardSpot.id, hardSpot.x, hardSpot.y);
+assert.strictEqual(map.parkingSpots.length, 2, 'Stage 3 must provide two parking objectives');
 stageGrounds.push(map.theme.ground);
 stageNames.push(map.stageName);
 
 assert.strictEqual(easySpot.id, 2, 'Stage 1 must use the straight-ahead center bay');
-assert.strictEqual(mediumSpot.id, 1, 'Stage 2 must use its single construction-zone bay');
-assert.strictEqual(hardSpot.id, 4, 'Stage 3 must use its single parallel parking bay');
+assert.strictEqual(easySpot2.id, 6, 'Stage 1 second clear must reveal its side bay');
+assert.strictEqual(mediumSpot.id, 1, 'Stage 2 must start at its left construction-zone bay');
+assert.strictEqual(mediumSpot2.id, 3, 'Stage 2 second clear must reveal its right bay');
+assert.strictEqual(hardSpot.id, 4, 'Stage 3 must start at its left parallel bay');
+assert.strictEqual(hardSpot2.id, 5, 'Stage 3 second clear must reveal its right parallel bay');
 assert.strictEqual(easySpot.width, easy.spotWidth);
 assert.strictEqual(hardSpot.width, hard.spotWidth);
 assert.strictEqual(new Set(stageGrounds).size, 3, 'Every stage must have a distinct ground theme');
 assert.strictEqual(new Set(stageNames).size, 3, 'Every stage must have a distinct map name');
+assert.strictEqual(CONFIG.GAME_DURATION, 100, 'Every stage must start with 100 seconds');
+assert.strictEqual(CONFIG.SCORING.PARKING_SUCCESS, 100);
+assert.strictEqual(CONFIG.SCORING.STAGE_TIME_MULTIPLIER, 3);
+assert.strictEqual(CONFIG.SCORING.ALL_CLEAR_BONUS, 300);
 
 judge.setDifficulty(hard);
 assert.strictEqual(judge.rules.angleToleranceDeg, hard.angleToleranceDeg);

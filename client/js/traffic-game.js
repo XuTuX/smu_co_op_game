@@ -9,7 +9,7 @@ class ObstacleDodgeGame {
     this.canvas.width = 1600;
     this.canvas.height = 894;
 
-    this.inputManager = new InputManager();
+    this.inputManager = new InputManager({ queueKeyboardPresses: true });
     this.soundEngine = new SoundEngine();
     this.network = new NetworkClient(this.inputManager, (connected) => this.updateHardwareStatus(connected));
 
@@ -39,7 +39,7 @@ class ObstacleDodgeGame {
     this.heartOpportunityUsed = false;
     this.trail = [];
 
-    this.state = 'TITLE';
+    this.state = 'READY';
     this.downSpawnTimer = 0.9;
     this.sideSpawnTimer = 3.8;
     this.collectibleTimer = 3.2;
@@ -53,6 +53,7 @@ class ObstacleDodgeGame {
     this.lastLaserWaveSize = 0;
     this.lastDownColumn = -1;
     this.elapsed = 0;
+    this.timeRemaining = CONFIG.GAME_DURATION;
     this.score = 0;
     this.dodged = 0;
     this.bonusScore = 0;
@@ -60,12 +61,26 @@ class ObstacleDodgeGame {
     this.level = 1;
     this.lastTime = 0;
     this.toastTimer = null;
+    this.readyActions = ['forward', 'backward', 'left', 'right'];
+    this.readyPlayers = this.createReadyState();
+    this.previousReadyInputs = this.createReadyState();
+    this.readyStartTimer = null;
+    this.countdownInterval = null;
+    this.countdownHideTimer = null;
 
     this.bindUI();
-    this.inputManager.onChange((inputs) => this.updateInputUI(inputs));
+    this.inputManager.onChange((inputs) => {
+      this.updateInputUI(inputs);
+      this.handleReadyInput(inputs);
+    });
     this.network.connect();
     this.updateHUD();
+    this.beginReadyCheck();
     requestAnimationFrame((time) => this.loop(time));
+  }
+
+  createReadyState() {
+    return { forward: false, backward: false, left: false, right: false };
   }
 
   createInputRepeatState() {
@@ -94,12 +109,68 @@ class ObstacleDodgeGame {
   }
 
   bindUI() {
-    document.getElementById('traffic-start-btn').addEventListener('click', () => this.startCountdown());
-    document.getElementById('traffic-restart-btn').addEventListener('click', () => this.startCountdown());
+    document.getElementById('traffic-restart-btn').addEventListener('click', () => this.beginReadyCheck());
     document.getElementById('traffic-sound-btn').addEventListener('click', (event) => {
       this.soundEngine.isMuted = !this.soundEngine.isMuted;
       event.currentTarget.textContent = this.soundEngine.isMuted ? '🔇' : '🔊';
     });
+  }
+
+  beginReadyCheck() {
+    window.clearTimeout(this.readyStartTimer);
+    window.clearInterval(this.countdownInterval);
+    window.clearTimeout(this.countdownHideTimer);
+    this.state = 'RESETTING_READY';
+    this.readyPlayers = this.createReadyState();
+    this.previousReadyInputs = this.createReadyState();
+    document.body.classList.remove('is-playing');
+    document.getElementById('traffic-countdown').classList.add('hidden');
+    document.getElementById('traffic-gameover-modal').classList.add('hidden');
+    document.getElementById('traffic-start-modal').classList.remove('hidden');
+    this.resetGame();
+    this.state = 'READY';
+    this.previousReadyInputs = this.createReadyState();
+    this.updateReadyUI();
+  }
+
+  handleReadyInput(inputs) {
+    if (this.state !== 'READY') {
+      this.previousReadyInputs = { ...inputs };
+      return;
+    }
+
+    let changed = false;
+    for (const action of this.readyActions) {
+      if (inputs[action] && !this.previousReadyInputs[action] && !this.readyPlayers[action]) {
+        this.readyPlayers[action] = true;
+        changed = true;
+      }
+    }
+    this.previousReadyInputs = { ...inputs };
+    if (!changed) return;
+
+    this.updateReadyUI();
+    if (this.readyActions.every((action) => this.readyPlayers[action])) {
+      this.state = 'READY_COMPLETE';
+      this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
+    }
+  }
+
+  updateReadyUI() {
+    const readyCount = this.readyActions.filter((action) => this.readyPlayers[action]).length;
+    document.querySelectorAll('#traffic-start-modal [data-ready-action]').forEach((card) => {
+      const isReady = Boolean(this.readyPlayers[card.dataset.readyAction]);
+      card.classList.toggle('is-ready', isReady);
+      const status = card.querySelector('.ready-state');
+      if (status) status.textContent = isReady ? '준비 완료 ✓' : '대기 중';
+    });
+    const progress = document.getElementById('traffic-ready-progress');
+    if (progress) {
+      progress.textContent = readyCount === this.readyActions.length
+        ? '모두 준비 완료!'
+        : `준비 ${readyCount} / ${this.readyActions.length}`;
+      progress.classList.toggle('all-ready', readyCount === this.readyActions.length);
+    }
   }
 
   updateHardwareStatus(connected) {
@@ -151,6 +222,7 @@ class ObstacleDodgeGame {
     this.lastLaserWaveSize = 0;
     this.lastDownColumn = -1;
     this.elapsed = 0;
+    this.timeRemaining = CONFIG.GAME_DURATION;
     this.score = 0;
     this.dodged = 0;
     this.bonusScore = 0;
@@ -162,10 +234,13 @@ class ObstacleDodgeGame {
 
   startCountdown() {
     this.soundEngine.init();
+    this.state = 'COUNTDOWN';
+    window.clearTimeout(this.readyStartTimer);
+    window.clearInterval(this.countdownInterval);
+    window.clearTimeout(this.countdownHideTimer);
     this.resetGame();
     document.body.classList.add('is-playing');
     window.scrollTo({ top: 0, behavior: 'instant' });
-    this.state = 'COUNTDOWN';
     document.getElementById('traffic-start-modal').classList.add('hidden');
     document.getElementById('traffic-gameover-modal').classList.add('hidden');
     const overlay = document.getElementById('traffic-countdown');
@@ -173,21 +248,22 @@ class ObstacleDodgeGame {
     overlay.classList.remove('hidden');
     let count = 3;
     text.textContent = count;
-    const timer = window.setInterval(() => {
+    this.countdownInterval = window.setInterval(() => {
       count--;
       if (count > 0) text.textContent = count;
-      else if (count === 0) text.textContent = 'GO!';
       else {
-        window.clearInterval(timer);
-        overlay.classList.add('hidden');
+        window.clearInterval(this.countdownInterval);
+        text.textContent = 'GO!';
         this.state = 'PLAYING';
+        this.countdownHideTimer = window.setTimeout(() => overlay.classList.add('hidden'), 500);
       }
-    }, 650);
+    }, 1000);
   }
 
   update(dt) {
     this.updatePlayer(dt);
     this.elapsed += dt;
+    this.timeRemaining = Math.max(0, this.timeRemaining - dt);
     this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
 
     const nextLevel = Math.min(8, 1 + Math.floor(this.score / 100));
@@ -230,6 +306,7 @@ class ObstacleDodgeGame {
     this.updateHeart(dt);
     this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
     this.updateHUD();
+    if (this.timeRemaining <= 0) this.endGame('TIME_UP');
   }
 
   getWaveSize(type) {
@@ -272,10 +349,10 @@ class ObstacleDodgeGame {
   updatePlayer(dt) {
     const inputs = this.inputManager.getCombinedState();
     const step = {
-      forward: this.shouldStep('forward', inputs.forward, dt),
-      backward: this.shouldStep('backward', inputs.backward, dt),
-      left: this.shouldStep('left', inputs.left, dt),
-      right: this.shouldStep('right', inputs.right, dt)
+      forward: this.shouldStep('forward', inputs.forward, dt, this.inputManager.consumeQueuedPress('forward')),
+      backward: this.shouldStep('backward', inputs.backward, dt, this.inputManager.consumeQueuedPress('backward')),
+      left: this.shouldStep('left', inputs.left, dt, this.inputManager.consumeQueuedPress('left')),
+      right: this.shouldStep('right', inputs.right, dt, this.inputManager.consumeQueuedPress('right'))
     };
     const moveX = (step.right ? 1 : 0) - (step.left ? 1 : 0);
     const moveY = (step.backward ? 1 : 0) - (step.forward ? 1 : 0);
@@ -309,8 +386,14 @@ class ObstacleDodgeGame {
     this.trail = this.trail.filter((point) => point.alpha > 0);
   }
 
-  shouldStep(action, pressed, dt) {
+  shouldStep(action, pressed, dt, queuedPress = false) {
     const state = this.inputRepeat[action];
+    if (queuedPress) {
+      state.wasPressed = pressed;
+      state.held = 0;
+      state.repeating = false;
+      return true;
+    }
     let trigger = false;
     if (pressed && !state.wasPressed) {
       trigger = true;
@@ -489,7 +572,9 @@ class ObstacleDodgeGame {
       vy: Math.sin(angle) * speed,
       rotation: 0,
       age: 0,
-      life: 9 + Math.random() * 3,
+      // The one-life recovery chance stays in the arena until it is collected
+      // (or the game is reset) so missing it once does not waste the opportunity.
+      life: Infinity,
       turnTimer: 0.2 + Math.random() * 0.35,
       wobblePhase: Math.random() * Math.PI * 2
     };
@@ -628,8 +713,6 @@ class ObstacleDodgeGame {
       this.soundEngine.playSuccess();
       this.showToast('♥ 생명 +1');
       this.updateHUD();
-    } else if (heart.life <= 0) {
-      this.heart = null;
     }
   }
 
@@ -688,17 +771,21 @@ class ObstacleDodgeGame {
     this.soundEngine.playCrash();
     this.showToast(this.lives > 0 ? `충돌! 남은 목숨 ${this.lives}` : '게임 종료');
     this.updateHUD();
-    if (this.lives <= 0) this.endGame();
+    if (this.lives <= 0) this.endGame('LIVES');
   }
 
-  endGame() {
+  endGame(reason = 'LIVES') {
+    if (this.state === 'GAMEOVER') return;
     this.state = 'GAMEOVER';
     this.inputManager.resetAll();
-    const resultMessage = this.score >= this.doubleWaveScore
-      ? '좋은 무빙이에요!'
-      : '괜찮은 움직임!';
+    const survivedFullRound = reason === 'TIME_UP';
+    const resultMessage = survivedFullRound
+      ? '60초 생존 성공!'
+      : (this.score >= this.doubleWaveScore ? '좋은 무빙이에요!' : '괜찮은 움직임!');
+    document.getElementById('traffic-gameover-badge').textContent = survivedFullRound ? "TIME'S UP!" : 'GAME OVER';
     document.getElementById('traffic-gameover-message').textContent = resultMessage;
     document.getElementById('traffic-final-score').textContent = this.score;
+    document.getElementById('traffic-final-time').textContent = `${Math.min(CONFIG.GAME_DURATION, Math.floor(this.elapsed))}s`;
     document.getElementById('traffic-gameover-modal').classList.remove('hidden');
   }
 
@@ -712,6 +799,7 @@ class ObstacleDodgeGame {
 
   updateHUD() {
     document.getElementById('traffic-score').textContent = this.score;
+    document.getElementById('traffic-time').textContent = Math.max(0, Math.ceil(this.timeRemaining));
     const hearts = '♥'.repeat(this.lives) + '♡'.repeat(Math.max(0, 3 - this.lives));
     const lives = document.getElementById('traffic-lives');
     lives.textContent = hearts;

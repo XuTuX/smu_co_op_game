@@ -85,5 +85,8 @@ assert.strictEqual(game.heartSpawnTimer, 2.5, 'The heart must wait a random 2-3 
 game.heartSpawnTimer = 9;
 game.scheduleHeartDrop();
 assert.strictEqual(game.heartSpawnTimer, 9, 'The heart opportunity must only be scheduled once per game');
+game.player = { x: 800, y: 500 };
+game.spawnHeart();
+assert.strictEqual(game.heart.life, Infinity, 'The extra-life heart must stay until the player collects it');
 
 console.log('✅ TRAFFIC DIFFICULTY TEST PASSED: progressive hazards + fast pickups + one-life heart');

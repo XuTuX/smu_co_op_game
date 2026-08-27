@@ -5,7 +5,13 @@ const CONFIG = {
   CANVAS_WIDTH: 1200,
   CANVAS_HEIGHT: 800,
 
-  GAME_DURATION: 60,
+  GAME_DURATION: 100,
+
+  SCORING: {
+    PARKING_SUCCESS: 100,
+    STAGE_TIME_MULTIPLIER: 3,
+    ALL_CLEAR_BONUS: 300
+  },
 
   BUS: {
     WIDTH: 42,
@@ -31,7 +37,7 @@ const CONFIG = {
     ANGLE_TOLERANCE_DEG: 15,       // Max rotation error in degrees (±15°)
     MAX_STOP_SPEED: 0.25,          // Velocity threshold to be considered stopped
     DWELL_TIME_SEC: 1.0,           // Time to hold position in seconds
-    POINTS_PER_SUCCESS: 10,
+    POINTS_PER_SUCCESS: 100,
     CORNER_INSIDE_TOLERANCE: 12    // Padding margin for 4-corner containment
   },
 
@@ -39,8 +45,8 @@ const CONFIG = {
     {
       level: 1,
       label: '연습',
-      description: '연습 주차장 · 정면 한 자리',
-      spotIds: [2],
+      description: '연습 주차장 · 목표 2자리',
+      spotIds: [2, 6],
       spotWidth: 82,
       spotLength: 172,
       angleToleranceDeg: 30,
@@ -51,8 +57,8 @@ const CONFIG = {
     {
       level: 2,
       label: '보통',
-      description: '도심 공사 구역 · 좌측 한 자리',
-      spotIds: [1],
+      description: '도심 공사 구역 · 목표 2자리',
+      spotIds: [1, 3],
       spotWidth: 66,
       spotLength: 148,
       angleToleranceDeg: 21,
@@ -63,8 +69,8 @@ const CONFIG = {
     {
       level: 3,
       label: '도전',
-      description: '야간 터미널 · 평행 한 자리',
-      spotIds: [4],
+      description: '야간 터미널 · 평행 2자리',
+      spotIds: [4, 5],
       spotWidth: 52,
       spotLength: 130,
       angleToleranceDeg: 13,

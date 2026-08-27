@@ -39,7 +39,7 @@
         <div class="game-card-label"><span aria-hidden="true">👀</span> LIVE PARKING TEST</div>
         <div id="difficulty-badge" class="difficulty-badge stage-1">
           <span id="stage-label">STAGE 1</span>
-          <strong id="difficulty-text">연습 · 정면의 넓은 주차 칸</strong>
+          <strong id="difficulty-text">연습 주차장 · 목표 2자리</strong>
         </div>
       </div>
 
@@ -50,8 +50,8 @@
           <span class="stat-note">POINTS</span>
         </div>
         <div class="stat-copy">
-          <h2>60초 안에<br><span>완벽하게 주차!</span></h2>
-          <p>주차 칸에 버스를 정렬하고 1초간 멈추면 +10점</p>
+          <h2>스테이지마다 100초<br><span>두 자리를 주차!</span></h2>
+          <p>한 자리 +100점 · 두 자리 완료 시 남은 시간 보너스</p>
         </div>
         <div class="stat-block stat-time">
           <span class="stat-label">TIME LEFT</span>
@@ -101,7 +101,7 @@
           </div>
         </div>
 
-        <div id="success-banner" class="success-banner hidden">PARKING SUCCESS! +10</div>
+        <div id="success-banner" class="success-banner hidden">PARKING SUCCESS! +100</div>
 
         <div id="countdown-overlay" class="overlay countdown-overlay hidden">
           <div id="countdown-text" class="countdown-number">3</div>
@@ -109,40 +109,38 @@
 
         <div id="stage-transition" class="overlay stage-transition hidden" aria-live="assertive">
           <div class="stage-transition-card">
-            <span id="stage-transition-kicker">AREA CLEAR! +10</span>
+            <span id="stage-transition-kicker">STAGE CLEAR! +500</span>
             <strong id="stage-transition-label">STAGE 2</strong>
             <em id="stage-transition-name">도심 공사 구역</em>
           </div>
         </div>
 
-        <div id="start-modal" class="overlay modal-overlay">
+        <div id="start-modal" class="overlay modal-overlay ready-check-modal">
           <div class="modal-card">
             <div class="modal-badge">PARKING MODE</div>
             <h2 class="modal-title">4명이 함께<br><span>버스 주차</span></h2>
-            <p class="modal-subtitle">전진·브레이크·좌·우를 한 명씩 맡아 제한 시간 안에 주차하세요.</p>
+            <p class="modal-subtitle">각자 맡은 버튼을 한 번씩 눌러 준비하세요. 4명이 모두 준비되면 3초 뒤 자동으로 시작합니다.</p>
 
             <div class="role-grid">
-              <div class="role-card role-p1"><span class="role-badge">P1</span><strong>전진</strong><kbd>W / ↑</kbd></div>
-              <div class="role-card role-p2"><span class="role-badge">P2</span><strong>후진</strong><kbd>S / ↓</kbd></div>
-              <div class="role-card role-p3"><span class="role-badge">P3</span><strong>좌회전</strong><kbd>A / ←</kbd></div>
-              <div class="role-card role-p4"><span class="role-badge">P4</span><strong>우회전</strong><kbd>D / →</kbd></div>
+              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>전진</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>후진</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>좌회전</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>우회전</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">눌러서 준비</button><span class="ready-state">대기 중</span></div>
             </div>
 
-            <button id="start-btn" class="btn btn-primary btn-large" type="button">
-              게임 시작 <span aria-hidden="true">→</span>
-            </button>
+            <div id="parking-ready-progress" class="ready-progress" aria-live="polite">준비 0 / 4</div>
           </div>
         </div>
 
         <div id="gameover-modal" class="overlay modal-overlay hidden">
           <div class="modal-card gameover-card">
-            <div class="modal-badge badge-red">TIME'S UP!</div>
-            <h2 class="modal-title">테스트 완료!</h2>
+            <div id="final-result-badge" class="modal-badge badge-red">TIME'S UP!</div>
+            <h2 id="final-result-title" class="modal-title">테스트 완료!</h2>
             <div class="score-summary">
               <div class="summary-box"><span class="summary-label">FINAL SCORE</span><strong id="final-score">0</strong></div>
               <div class="summary-box"><span class="summary-label">PARKED BUSES</span><strong id="final-park-count">0</strong></div>
             </div>
-            <button id="restart-btn" class="btn btn-primary btn-large" type="button">PLAY AGAIN <span aria-hidden="true">↻</span></button>
+            <button id="restart-btn" class="btn btn-primary btn-large" type="button">다시 준비하기 <span aria-hidden="true">↻</span></button>
           </div>
         </div>
       </section>

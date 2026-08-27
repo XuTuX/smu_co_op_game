@@ -19,9 +19,12 @@ class GameMap {
       1: {
         name: '연습 주차장',
         code: 'TRAINING LOT',
-        theme: { ground: '#1E2430', grid: '#262F3E', accent: '#FACC15', wall: '#374151' },
+        theme: { ground: '#202731', grid: '#28313D', accent: '#EAB308', wall: '#3A4654' },
         spawnPoint: { x: 600, y: 690, angle: -Math.PI / 2 },
-        parkingSpot: { id: 2, name: '연습장 정면 주차', x: 600, y: 145, angle: Math.PI / 2 },
+        parkingSpots: [
+          { id: 2, name: '연습장 정면 주차', x: 600, y: 145, angle: Math.PI / 2 },
+          { id: 6, name: '연습장 우측 주차', x: 1015, y: 405, angle: 0 }
+        ],
         obstacles: [
           { x: 360, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#3B82F6' },
           { x: 840, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
@@ -32,30 +35,33 @@ class GameMap {
       2: {
         name: '도심 공사 구역',
         code: 'CITY WORKS',
-        theme: { ground: '#2A2721', grid: '#373229', accent: '#FB923C', wall: '#57534E' },
-        spawnPoint: { x: 1000, y: 650, angle: Math.PI },
-        parkingSpot: { id: 1, name: '공사장 좌측 주차', x: 165, y: 150, angle: Math.PI / 2 },
+        theme: { ground: '#252A2E', grid: '#2D3439', accent: '#F59E0B', wall: '#444B50' },
+        spawnPoint: { x: 1010, y: 675, angle: Math.PI },
+        parkingSpots: [
+          { id: 1, name: '공사장 좌측 주차', x: 170, y: 145, angle: Math.PI / 2 },
+          { id: 3, name: '공사장 우측 주차', x: 1030, y: 405, angle: Math.PI / 2 }
+        ],
         obstacles: [
-          { x: 820, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
-          { x: 930, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#A855F7' },
-          { x: 570, y: 390, width: 105, height: 250, angle: 0, type: 'planter' },
-          { x: 360, y: 600, width: 230, height: 28, angle: 0, type: 'barrier' },
-          { x: 825, y: 500, width: 190, height: 28, angle: -0.18, type: 'barrier' }
+          { x: 860, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
+          { x: 960, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#8B5CF6' },
+          { x: 455, y: 575, width: 210, height: 72, angle: 0, type: 'workzone' },
+          { x: 735, y: 345, width: 190, height: 72, angle: 0, type: 'workzone' }
         ]
       },
       3: {
         name: '야간 버스 터미널',
         code: 'NIGHT TERMINAL',
-        theme: { ground: '#142B31', grid: '#1E3A40', accent: '#22D3EE', wall: '#334E55' },
-        spawnPoint: { x: 950, y: 665, angle: Math.PI },
-        parkingSpot: { id: 4, name: '터미널 평행 주차', x: 190, y: 385, angle: 0 },
+        theme: { ground: '#17272D', grid: '#20333A', accent: '#38BDF8', wall: '#344B53' },
+        spawnPoint: { x: 1020, y: 690, angle: Math.PI },
+        parkingSpots: [
+          { id: 4, name: '터미널 좌측 평행 주차', x: 205, y: 405, angle: 0 },
+          { id: 5, name: '터미널 우측 평행 주차', x: 985, y: 405, angle: Math.PI }
+        ],
         obstacles: [
-          { x: 340, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#60A5FA' },
-          { x: 730, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#F472B6' },
-          { x: 910, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#FBBF24' },
-          { x: 610, y: 430, width: 100, height: 310, angle: 0, type: 'planter' },
-          { x: 350, y: 650, width: 210, height: 26, angle: 0, type: 'barrier' },
-          { x: 820, y: 520, width: 200, height: 26, angle: 0.12, type: 'barrier' }
+          { x: 660, y: 175, width: 410, height: 72, angle: 0, type: 'platform', label: 'A' },
+          { x: 660, y: 600, width: 410, height: 72, angle: 0, type: 'platform', label: 'B' },
+          { x: 335, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#60A5FA' },
+          { x: 1080, y: 185, width: 24, height: 150, angle: 0, type: 'barrier' }
         ]
       }
     };
@@ -72,11 +78,16 @@ class GameMap {
     this.theme = { ...layout.theme };
     this.spawnPoint = { ...layout.spawnPoint };
     this.obstacles = layout.obstacles.map((obstacle) => ({ ...obstacle }));
-    this.parkingSpots = [{
-      ...layout.parkingSpot,
+    this.parkingSpots = layout.parkingSpots.map((parkingSpot) => ({
+      ...parkingSpot,
       width: CONFIG.PARKING.WIDTH,
       length: CONFIG.PARKING.LENGTH
-    }];
+    }));
+    this.activeParkingSpotId = this.parkingSpots[0].id;
+  }
+
+  setActiveParkingSpot(spot) {
+    if (spot) this.activeParkingSpotId = spot.id;
   }
 
   // Get a random new parking target that differs from current and isn't right on top of bus
@@ -110,7 +121,7 @@ class GameMap {
       candidates = this.parkingSpots.filter((spot) => difficulty.spotIds.includes(spot.id));
     }
 
-    const spot = candidates[Math.floor(Math.random() * candidates.length)];
+    const spot = candidates[0];
     return {
       ...spot,
       width: difficulty.spotWidth,
@@ -140,6 +151,7 @@ class GameMap {
       ctx.stroke();
     }
 
+    this.drawEnvironment(ctx);
     this.drawStageStamp(ctx);
 
     // 2. Road Lanes & Driving Area Markers
@@ -159,8 +171,9 @@ class GameMap {
     ctx.save();
 
     ctx.strokeStyle = this.theme.accent;
-    ctx.lineWidth = 3;
-    ctx.setLineDash([20, 15]);
+    ctx.globalAlpha = 0.72;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([18, 16]);
 
     if (this.stage === 1) {
       ctx.beginPath();
@@ -171,79 +184,78 @@ class GameMap {
       ctx.stroke();
     } else if (this.stage === 2) {
       ctx.beginPath();
-      ctx.moveTo(1080, 690);
-      ctx.lineTo(1080, 560);
-      ctx.lineTo(700, 560);
-      ctx.quadraticCurveTo(620, 560, 620, 480);
-      ctx.lineTo(620, 270);
-      ctx.quadraticCurveTo(620, 230, 570, 230);
-      ctx.lineTo(90, 230);
+      ctx.moveTo(1090, 675);
+      ctx.lineTo(830, 675);
+      ctx.bezierCurveTo(650, 675, 670, 450, 565, 450);
+      ctx.bezierCurveTo(430, 450, 500, 245, 340, 245);
+      ctx.lineTo(95, 245);
       ctx.stroke();
     } else {
       ctx.beginPath();
-      ctx.roundRect(105, 95, this.width - 210, this.height - 190, 80);
+      ctx.moveTo(1080, 700);
+      ctx.lineTo(930, 700);
+      ctx.quadraticCurveTo(870, 700, 870, 640);
+      ctx.lineTo(870, 505);
+      ctx.quadraticCurveTo(870, 455, 815, 455);
+      ctx.lineTo(100, 455);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(90, 520);
-      ctx.lineTo(1110, 520);
+      ctx.moveTo(100, 330);
+      ctx.lineTo(940, 330);
       ctx.stroke();
     }
 
     ctx.setLineDash([]); // Reset line dash
 
     // White perimeter lane markings
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
     ctx.lineWidth = 2;
     ctx.strokeRect(40, 40, this.width - 80, this.height - 80);
-
-    if (this.stage === 1) {
-      this.drawArrow(ctx, 350, 275, 0);
-      this.drawArrow(ctx, 850, 275, 0);
-      this.drawArrow(ctx, 850, 525, Math.PI);
-      this.drawArrow(ctx, 350, 525, Math.PI);
-    } else if (this.stage === 2) {
-      this.drawArrow(ctx, 880, 560, Math.PI);
-      this.drawArrow(ctx, 620, 350, -Math.PI / 2);
-      this.drawArrow(ctx, 360, 230, Math.PI);
-    } else {
-      this.drawArrow(ctx, 930, 520, Math.PI);
-      this.drawArrow(ctx, 270, 520, Math.PI);
-      this.drawArrow(ctx, 1080, 335, -Math.PI / 2);
-    }
 
     ctx.restore();
   }
 
   drawStageStamp(ctx) {
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.font = '900 42px ui-monospace, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`0${this.stage} · ${this.stageCode}`, 62, 82);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.font = '800 18px ui-monospace, monospace';
+    ctx.fillText(`0${this.stage} / ${this.stageCode}`, this.width - 55, this.height - 48);
     ctx.restore();
   }
 
-  drawArrow(ctx, x, y, angle) {
+  drawEnvironment(ctx) {
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.beginPath();
-    ctx.moveTo(25, 0);
-    ctx.lineTo(10, -12);
-    ctx.lineTo(10, -5);
-    ctx.lineTo(-25, -5);
-    ctx.lineTo(-25, 5);
-    ctx.lineTo(10, 5);
-    ctx.lineTo(10, 12);
-    ctx.closePath();
-    ctx.fill();
+    if (this.stage === 1) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.018)';
+      ctx.fillRect(45, 70, this.width - 90, 145);
+      ctx.fillRect(45, 585, this.width - 90, 145);
+    } else if (this.stage === 2) {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.035)';
+      ctx.fillRect(45, 85, this.width - 90, 115);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
+      ctx.fillRect(45, 625, this.width - 90, 105);
+    } else {
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.028)';
+      ctx.fillRect(45, 285, this.width - 90, 215);
+      ctx.strokeStyle = 'rgba(125, 211, 252, 0.14)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(45, 285);
+      ctx.lineTo(this.width - 45, 285);
+      ctx.moveTo(45, 500);
+      ctx.lineTo(this.width - 45, 500);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
   drawParkingBays(ctx) {
-    // Draw white / light-yellow parking stall lines for all spots
-    this.parkingSpots.forEach(spot => {
+    // Only the current objective is visible; the second bay appears on clear.
+    this.parkingSpots
+      .filter((spot) => spot.id === this.activeParkingSpotId)
+      .forEach(spot => {
       ctx.save();
       ctx.translate(spot.x, spot.y);
       ctx.rotate(spot.angle);
@@ -320,21 +332,102 @@ class GameMap {
           ctx.fill();
         }
 
+      } else if (obs.type === 'workzone') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.beginPath();
+        ctx.roundRect(-halfW + 5, -halfH + 6, obs.width, obs.height, 10);
+        ctx.fill();
+
+        ctx.fillStyle = '#30363B';
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.roundRect(-halfW, -halfH, obs.width, obs.height, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(-halfW + 4, -halfH + 4, obs.width - 8, obs.height - 8, 7);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.26)';
+        ctx.lineWidth = 8;
+        for (let x = -halfW - obs.height; x < halfW + obs.height; x += 32) {
+          ctx.beginPath();
+          ctx.moveTo(x, halfH);
+          ctx.lineTo(x + obs.height, -halfH);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // Evenly spaced cones make the closed area read as intentional.
+        const coneCount = Math.max(3, Math.floor(obs.width / 55));
+        for (let i = 0; i < coneCount; i++) {
+          const coneX = -halfW + 28 + i * ((obs.width - 56) / Math.max(1, coneCount - 1));
+          ctx.fillStyle = '#FB923C';
+          ctx.beginPath();
+          ctx.moveTo(coneX, -8);
+          ctx.lineTo(coneX - 8, 10);
+          ctx.lineTo(coneX + 8, 10);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#FFF7ED';
+          ctx.fillRect(coneX - 5, 2, 10, 3);
+        }
+
+      } else if (obs.type === 'platform') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.roundRect(-halfW + 6, -halfH + 7, obs.width, obs.height, 12);
+        ctx.fill();
+
+        ctx.fillStyle = '#263B44';
+        ctx.strokeStyle = '#647A83';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(-halfW, -halfH, obs.width, obs.height, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(-halfW + 14, -halfH + 8, obs.width - 28, 4);
+        ctx.fillRect(-halfW + 14, halfH - 12, obs.width - 28, 4);
+
+        ctx.fillStyle = '#0F2026';
+        for (let x = -halfW + 70; x < halfW - 20; x += 76) {
+          ctx.beginPath();
+          ctx.roundRect(x, -12, 48, 24, 5);
+          ctx.fill();
+          ctx.fillStyle = '#48616B';
+          ctx.fillRect(x + 8, -3, 32, 6);
+          ctx.fillStyle = '#0F2026';
+        }
+
+        ctx.fillStyle = '#E0F2FE';
+        ctx.beginPath();
+        ctx.arc(-halfW + 34, 0, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#075985';
+        ctx.font = '900 18px ui-monospace, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obs.label || 'T', -halfW + 34, 1);
+
       } else if (obs.type === 'barrier') {
-        // Concrete barrier with hazard diagonal stripes
-        ctx.fillStyle = '#9CA3AF';
-        ctx.fillRect(-halfW, -halfH, obs.width, obs.height);
-        ctx.strokeStyle = '#4B5563';
+        ctx.fillStyle = '#8B949B';
+        ctx.beginPath();
+        ctx.roundRect(-halfW, -halfH, obs.width, obs.height, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#424A50';
         ctx.lineWidth = 2;
         ctx.strokeRect(-halfW, -halfH, obs.width, obs.height);
 
-        // Hazard stripes
-        ctx.strokeStyle = '#FACC15';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(-halfW + 5, -halfH);
-        ctx.lineTo(-halfW + 20, halfH);
-        ctx.stroke();
+        ctx.fillStyle = '#F59E0B';
+        if (obs.width >= obs.height) {
+          for (let x = -halfW + 8; x < halfW - 4; x += 24) ctx.fillRect(x, -halfH + 3, 10, obs.height - 6);
+        } else {
+          for (let y = -halfH + 8; y < halfH - 4; y += 24) ctx.fillRect(-halfW + 3, y, obs.width - 6, 10);
+        }
       }
 
       ctx.restore();

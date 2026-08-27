@@ -3,6 +3,8 @@
 .traffic-stats { grid-template-columns: 220px 1fr 250px; }
 .traffic-lives-card { background: var(--pink); transform: rotate(1deg); }
 .traffic-lives-card strong { display: block; margin: 12px 0 9px; color: #d93434; font-size: clamp(36px, 5vw, 60px); letter-spacing: .02em; white-space: nowrap; }
+.traffic-time-note b { font-size: 22px; color: var(--ink); }
+.traffic-ready-progress { background: var(--orange); color: var(--paper); }
 .traffic-frame { background: #172b31; }
 .traffic-frame #trafficCanvas { display: block; width: 100%; height: 100%; object-fit: contain; }
 .traffic-badge { background: var(--orange); color: var(--paper); }

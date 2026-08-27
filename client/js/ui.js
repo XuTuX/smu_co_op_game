@@ -34,6 +34,8 @@ class UIController {
     this.stageTransitionName = document.getElementById('stage-transition-name');
     this.finalScoreElement = document.getElementById('final-score');
     this.finalParkCountElement = document.getElementById('final-park-count');
+    this.finalResultBadge = document.getElementById('final-result-badge');
+    this.finalResultTitle = document.getElementById('final-result-title');
 
     // Action buttons
     this.startBtn = document.getElementById('start-btn');
@@ -42,7 +44,7 @@ class UIController {
   }
 
   init(onStart, onRestart, onSoundToggle) {
-    if (this.startBtn) {
+    if (this.startBtn && onStart) {
       this.startBtn.addEventListener('click', onStart);
     }
     if (this.restartBtn) {
@@ -149,7 +151,7 @@ class UIController {
   showStageTransition(scoreAdded, difficulty) {
     if (!this.stageTransition) return;
     this.stageTransition.className = `overlay stage-transition stage-${difficulty.level}`;
-    if (this.stageTransitionKicker) this.stageTransitionKicker.textContent = `AREA CLEAR! +${scoreAdded}`;
+    if (this.stageTransitionKicker) this.stageTransitionKicker.textContent = `STAGE CLEAR! +${scoreAdded}`;
     if (this.stageTransitionLabel) this.stageTransitionLabel.textContent = `STAGE ${difficulty.level}`;
     if (this.stageTransitionName) this.stageTransitionName.textContent = difficulty.description.split(' · ')[0];
   }
@@ -173,6 +175,22 @@ class UIController {
   }
 
   showGameOver(score, parkCount) {
+    if (this.finalResultBadge) {
+      this.finalResultBadge.className = 'modal-badge badge-red';
+      this.finalResultBadge.textContent = "TIME'S UP!";
+    }
+    if (this.finalResultTitle) this.finalResultTitle.textContent = '테스트 완료!';
+    if (this.finalScoreElement) this.finalScoreElement.textContent = score;
+    if (this.finalParkCountElement) this.finalParkCountElement.textContent = parkCount;
+    this.gameOverModal.classList.remove('hidden');
+  }
+
+  showGameClear(score, parkCount) {
+    if (this.finalResultBadge) {
+      this.finalResultBadge.className = 'modal-badge';
+      this.finalResultBadge.textContent = 'ALL CLEAR!';
+    }
+    if (this.finalResultTitle) this.finalResultTitle.textContent = '모든 스테이지 완료!';
     if (this.finalScoreElement) this.finalScoreElement.textContent = score;
     if (this.finalParkCountElement) this.finalParkCountElement.textContent = parkCount;
     this.gameOverModal.classList.remove('hidden');

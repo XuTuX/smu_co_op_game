@@ -23,12 +23,20 @@ class Game {
     });
 
     // Game state
-    this.state = 'TITLE'; // 'TITLE' | 'COUNTDOWN' | 'PLAYING' | 'TRANSITION' | 'GAMEOVER'
+    this.state = 'READY'; // 'READY' | 'READY_COMPLETE' | 'COUNTDOWN' | 'PLAYING' | 'TRANSITION' | 'GAMEOVER'
     this.score = 0;
     this.parkCount = 0;
+    this.stageParkCount = 0;
+    this.stageScore = 0;
     this.level = 1;
     this.timeRemaining = CONFIG.GAME_DURATION;
     this.lastTime = 0;
+    this.readyActions = ['forward', 'backward', 'left', 'right'];
+    this.readyPlayers = this.createReadyState();
+    this.previousReadyInputs = this.createReadyState();
+    this.readyStartTimer = null;
+    this.countdownInterval = null;
+    this.countdownHideTimer = null;
 
     // Screen Shake & VFX
     this.shakeIntensity = 0;
@@ -43,12 +51,13 @@ class Game {
     // Subscribe input changes to update HUD live button indicators
     this.inputManager.onChange((combined) => {
       this.ui.updateButtonIndicators(combined);
+      this.handleReadyInput(combined);
     });
 
     // Initialize UI callbacks
     this.ui.init(
-      () => this.startCountdown(),
-      () => this.startCountdown(),
+      null,
+      () => this.beginReadyCheck(),
       () => {
         this.soundEngine.isMuted = !this.soundEngine.isMuted;
         const icon = document.getElementById('sound-icon');
@@ -62,21 +71,87 @@ class Game {
     // Setup first parking target
     this.applyDifficulty(1);
     const firstSpot = this.map.getSpotForLevel(1, null, this.bus.x, this.bus.y);
+    this.map.setActiveParkingSpot(firstSpot);
     this.parkingJudge.setTargetSpot(firstSpot);
 
     // Initial UI state
     this.ui.updateScore(this.score);
     this.ui.updateTime(this.timeRemaining);
     this.ui.updateSteering(this.bus.steeringAngle, CONFIG.BUS.MAX_STEER_ANGLE);
-    this.ui.showStartScreen();
+    this.beginReadyCheck();
 
     // Start 60fps loop
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  createReadyState() {
+    return { forward: false, backward: false, left: false, right: false };
+  }
+
+  beginReadyCheck() {
+    window.clearTimeout(this.readyStartTimer);
+    window.clearInterval(this.countdownInterval);
+    window.clearTimeout(this.countdownHideTimer);
+    this.state = 'RESETTING_READY';
+    this.readyPlayers = this.createReadyState();
+    this.previousReadyInputs = this.createReadyState();
+    document.body.classList.remove('is-playing');
+    this.ui.hideCountdown();
+    this.ui.hideGameOver();
+    this.ui.hideStageTransition();
+    this.ui.showStartScreen();
+    this.inputManager.resetAll();
+    this.state = 'READY';
+    this.previousReadyInputs = this.createReadyState();
+    this.updateReadyUI();
+  }
+
+  handleReadyInput(inputs) {
+    if (this.state !== 'READY') {
+      this.previousReadyInputs = { ...inputs };
+      return;
+    }
+
+    let changed = false;
+    for (const action of this.readyActions) {
+      if (inputs[action] && !this.previousReadyInputs[action] && !this.readyPlayers[action]) {
+        this.readyPlayers[action] = true;
+        changed = true;
+      }
+    }
+    this.previousReadyInputs = { ...inputs };
+    if (!changed) return;
+
+    this.updateReadyUI();
+    if (this.readyActions.every((action) => this.readyPlayers[action])) {
+      this.state = 'READY_COMPLETE';
+      this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
+    }
+  }
+
+  updateReadyUI() {
+    const readyCount = this.readyActions.filter((action) => this.readyPlayers[action]).length;
+    document.querySelectorAll('#start-modal [data-ready-action]').forEach((card) => {
+      const isReady = Boolean(this.readyPlayers[card.dataset.readyAction]);
+      card.classList.toggle('is-ready', isReady);
+      const status = card.querySelector('.ready-state');
+      if (status) status.textContent = isReady ? '준비 완료 ✓' : '대기 중';
+    });
+    const progress = document.getElementById('parking-ready-progress');
+    if (progress) {
+      progress.textContent = readyCount === this.readyActions.length
+        ? '모두 준비 완료!'
+        : `준비 ${readyCount} / ${this.readyActions.length}`;
+      progress.classList.toggle('all-ready', readyCount === this.readyActions.length);
+    }
+  }
+
   startCountdown() {
     this.soundEngine.init(); // Initialize audio context on user interaction
     this.state = 'COUNTDOWN';
+    window.clearTimeout(this.readyStartTimer);
+    window.clearInterval(this.countdownInterval);
+    window.clearTimeout(this.countdownHideTimer);
     document.body.classList.add('is-playing');
     this.ui.hideStartScreen();
     this.ui.hideGameOver();
@@ -85,6 +160,8 @@ class Game {
     // Reset game variables
     this.score = 0;
     this.parkCount = 0;
+    this.stageParkCount = 0;
+    this.stageScore = 0;
     this.level = 1;
     this.timeRemaining = CONFIG.GAME_DURATION;
     this.ui.updateScore(0);
@@ -98,26 +175,26 @@ class Game {
     this.ui.updateSteering(this.bus.steeringAngle, CONFIG.BUS.MAX_STEER_ANGLE);
     this.applyDifficulty(1);
     const spot = this.map.getSpotForLevel(1, null, this.bus.x, this.bus.y);
+    this.map.setActiveParkingSpot(spot);
     this.parkingJudge.setTargetSpot(spot);
 
     let count = 3;
     this.ui.showCountdown(count);
     this.soundEngine.playCountdown(count);
 
-    const countdownInterval = setInterval(() => {
+    this.countdownInterval = window.setInterval(() => {
       count--;
       if (count > 0) {
         this.ui.showCountdown(count);
         this.soundEngine.playCountdown(count);
-      } else if (count === 0) {
+      } else {
+        window.clearInterval(this.countdownInterval);
         this.ui.showCountdown(0); // "GO!"
         this.soundEngine.playCountdown(0);
-      } else {
-        clearInterval(countdownInterval);
-        this.ui.hideCountdown();
         this.state = 'PLAYING';
+        this.countdownHideTimer = window.setTimeout(() => this.ui.hideCountdown(), 500);
       }
-    }, 900);
+    }, 1000);
   }
 
   applyDifficulty(level) {
@@ -129,22 +206,42 @@ class Game {
   }
 
   handleParkingSuccess(spot) {
-    this.score += CONFIG.PARKING.POINTS_PER_SUCCESS;
+    const parkingPoints = CONFIG.SCORING.PARKING_SUCCESS;
+    this.score += parkingPoints;
+    this.stageScore += parkingPoints;
     this.parkCount++;
+    this.stageParkCount++;
     this.ui.updateScore(this.score);
-    const previousLevel = this.level;
-    const nextLevel = Math.min(CONFIG.DIFFICULTY.length, this.parkCount + 1);
-    const advancesToNewMap = nextLevel > previousLevel;
-    const nextDifficulty = CONFIG.DIFFICULTY[nextLevel - 1];
     this.soundEngine.playSuccess();
 
     // Spawn Confetti Particles
     this.spawnConfetti(spot.x, spot.y);
 
-    if (advancesToNewMap) {
+    // First clear: keep the map and reveal its second, different destination.
+    if (this.stageParkCount < 2) {
+      this.ui.showSuccessBanner(parkingPoints, null);
+      setTimeout(() => {
+        if (this.state !== 'PLAYING') return;
+        const nextSpot = this.map.getSpotForLevel(this.level, spot.id, this.bus.x, this.bus.y);
+        this.map.setActiveParkingSpot(nextSpot);
+        this.parkingJudge.setTargetSpot(nextSpot);
+      }, 650);
+      return;
+    }
+
+    // Two bays clear the stage and convert remaining seconds into score.
+    const timeBonus = Math.max(0, Math.ceil(this.timeRemaining)) * CONFIG.SCORING.STAGE_TIME_MULTIPLIER;
+    this.score += timeBonus;
+    this.stageScore += timeBonus;
+    this.ui.updateScore(this.score);
+    const isFinalStage = this.level >= CONFIG.DIFFICULTY.length;
+
+    if (!isFinalStage) {
+      const nextLevel = this.level + 1;
+      const nextDifficulty = CONFIG.DIFFICULTY[nextLevel - 1];
       this.state = 'TRANSITION';
       this.inputManager.resetAll();
-      this.ui.showStageTransition(CONFIG.PARKING.POINTS_PER_SUCCESS, nextDifficulty);
+      this.ui.showStageTransition(this.stageScore, nextDifficulty);
 
       setTimeout(() => {
         if (this.state !== 'TRANSITION') return;
@@ -152,7 +249,12 @@ class Game {
         this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
         this.applyDifficulty(nextLevel);
         const nextSpot = this.map.getSpotForLevel(nextLevel, null, this.bus.x, this.bus.y);
+        this.map.setActiveParkingSpot(nextSpot);
         this.parkingJudge.setTargetSpot(nextSpot);
+        this.stageParkCount = 0;
+        this.stageScore = 0;
+        this.timeRemaining = CONFIG.GAME_DURATION;
+        this.ui.updateTime(this.timeRemaining);
         this.particles = [];
         this.ui.hideStageTransition();
         this.state = 'PLAYING';
@@ -160,14 +262,17 @@ class Game {
       return;
     }
 
-    // The final map can be replayed for more score until time expires.
-    this.ui.showSuccessBanner(CONFIG.PARKING.POINTS_PER_SUCCESS, null);
+    // Six total bays complete the run.
+    this.score += CONFIG.SCORING.ALL_CLEAR_BONUS;
+    this.ui.updateScore(this.score);
+    this.state = 'TRANSITION';
+    this.inputManager.resetAll();
+    this.ui.showSuccessBanner(CONFIG.SCORING.ALL_CLEAR_BONUS, null);
     setTimeout(() => {
-      if (this.state !== 'PLAYING') return;
-      this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
-      const nextSpot = this.map.getSpotForLevel(this.level, null, this.bus.x, this.bus.y);
-      this.parkingJudge.setTargetSpot(nextSpot);
-    }, 700);
+      if (this.state !== 'TRANSITION') return;
+      this.state = 'GAMEOVER';
+      this.ui.showGameClear(this.score, this.parkCount);
+    }, 850);
   }
 
   handleCollision(collisionData) {
@@ -316,6 +421,8 @@ class Game {
     const steeringPercent = Math.round((this.bus.steeringAngle / CONFIG.BUS.MAX_STEER_ANGLE) * 100);
     this.canvas.dataset.steeringAngle = this.bus.steeringAngle.toFixed(4);
     this.canvas.dataset.steeringPercent = String(steeringPercent);
+    this.canvas.dataset.stage = String(this.level);
+    this.canvas.dataset.stageParkCount = String(this.stageParkCount);
 
     // Continue loop
     requestAnimationFrame((t) => this.loop(t));

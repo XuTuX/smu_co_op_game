@@ -41,6 +41,7 @@
         <div class="stat-block stat-score">
           <span class="stat-label">SCORE</span>
           <strong id="traffic-score">0</strong>
+          <span class="stat-note traffic-time-note">TIME <b id="traffic-time">60</b> SEC</span>
         </div>
         <div class="stat-copy">
           <h2>빈칸을 찾아<br><span>끝까지 살아남기</span></h2>
@@ -72,28 +73,30 @@
           <div id="traffic-countdown-text" class="countdown-number">3</div>
         </div>
 
-        <div id="traffic-start-modal" class="overlay modal-overlay">
+        <div id="traffic-start-modal" class="overlay modal-overlay ready-check-modal">
           <div class="modal-card traffic-modal">
             <div class="modal-badge traffic-badge">BLOCK HOP</div>
             <h2 class="modal-title">4명이 함께<br><span>장애물 피하기</span></h2>
+            <p class="modal-subtitle">각자 맡은 버튼을 한 번씩 눌러 준비하세요. 4명이 모두 준비되면 3초 뒤 자동으로 시작합니다.</p>
             <div class="role-grid">
-              <div class="role-card role-p1"><span class="role-badge">P1</span><strong>위</strong><kbd>W / ↑</kbd></div>
-              <div class="role-card role-p2"><span class="role-badge">P2</span><strong>아래</strong><kbd>S / ↓</kbd></div>
-              <div class="role-card role-p3"><span class="role-badge">P3</span><strong>왼쪽</strong><kbd>A / ←</kbd></div>
-              <div class="role-card role-p4"><span class="role-badge">P4</span><strong>오른쪽</strong><kbd>D / →</kbd></div>
+              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>위</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>아래</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>왼쪽</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>오른쪽</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">눌러서 준비</button><span class="ready-state">대기 중</span></div>
             </div>
-            <button id="traffic-start-btn" class="btn btn-primary btn-large traffic-start" type="button">게임 시작 <span aria-hidden="true">→</span></button>
+            <div id="traffic-ready-progress" class="ready-progress traffic-ready-progress" aria-live="polite">준비 0 / 4</div>
           </div>
         </div>
 
         <div id="traffic-gameover-modal" class="overlay modal-overlay hidden">
           <div class="modal-card gameover-card">
-            <div class="modal-badge badge-red">GAME OVER</div>
+            <div id="traffic-gameover-badge" class="modal-badge badge-red">GAME OVER</div>
             <h2 id="traffic-gameover-message" class="modal-title">괜찮은 움직임!</h2>
             <div class="score-summary">
               <div class="summary-box"><span class="summary-label">SCORE</span><strong id="traffic-final-score">0</strong></div>
+              <div class="summary-box"><span class="summary-label">SURVIVED</span><strong id="traffic-final-time">0s</strong></div>
             </div>
-            <button id="traffic-restart-btn" class="btn btn-primary btn-large" type="button">다시 도전 <span aria-hidden="true">↻</span></button>
+            <button id="traffic-restart-btn" class="btn btn-primary btn-large" type="button">다시 준비하기 <span aria-hidden="true">↻</span></button>
           </div>
         </div>
       </section>

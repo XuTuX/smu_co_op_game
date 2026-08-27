@@ -4,6 +4,7 @@
 class InputManager {
   constructor(options = {}) {
     this.latchSteering = Boolean(options.latchSteering);
+    this.queueKeyboardPresses = Boolean(options.queueKeyboardPresses);
     this.keyboardState = {
       forward: false,
       backward: false,
@@ -32,6 +33,12 @@ class InputManager {
       right: false
     };
     this.pulseTimers = {};
+    this.pressQueue = {
+      forward: 0,
+      backward: 0,
+      left: 0,
+      right: 0
+    };
     this.activePointers = {
       forward: new Set(),
       backward: new Set(),
@@ -107,6 +114,9 @@ class InputManager {
 
     window.addEventListener('keyup', (e) => {
       this.handleKeyEvent(e.code, false);
+      // Grid movement queues keydown edges, so extending keyup into a pulse
+      // would merge rapid taps into one artificial long press.
+      if (this.queueKeyboardPresses) return;
       const action = this.getActionForCode(e.code);
       if (this.latchSteering && (action === 'left' || action === 'right')) return;
       const pulseMs = action === 'left' || action === 'right' ? 250 : 100;
@@ -140,6 +150,11 @@ class InputManager {
 
   handleKeyEvent(code, isPressed) {
     let changed = false;
+    const action = this.getActionForCode(code);
+    if (this.queueKeyboardPresses && action && isPressed && !this.keyboardState[action]) {
+      // Cap the backlog so a stalled tab cannot release a huge movement burst.
+      this.pressQueue[action] = Math.min(12, this.pressQueue[action] + 1);
+    }
 
     switch (code) {
       case 'KeyW':
@@ -180,6 +195,12 @@ class InputManager {
     }
   }
 
+  consumeQueuedPress(action) {
+    if (!this.queueKeyboardPresses || !action || this.pressQueue[action] <= 0) return false;
+    this.pressQueue[action]--;
+    return true;
+  }
+
   // Update input from ESP32 WebSocket packet
   setEsp32Input(data) {
     if (!data) return;
@@ -207,6 +228,9 @@ class InputManager {
     this.keyboardState.backward = false;
     this.keyboardState.left = false;
     this.keyboardState.right = false;
+    Object.keys(this.pressQueue).forEach((action) => {
+      this.pressQueue[action] = 0;
+    });
     this.notifyListeners();
   }
 
