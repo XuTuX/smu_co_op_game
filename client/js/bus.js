@@ -25,6 +25,11 @@ class Bus {
 
     // Skid marks tracking
     this.skidMarks = [];
+
+    // Predicted trajectory is anchored to the map until steering changes.
+    this.steeringGuidePoints = [];
+    this.steeringGuideAngle = 0;
+    this.steeringGuideDirection = 1;
   }
 
   reset(x, y, angle = 0) {
@@ -40,9 +45,12 @@ class Bus {
     this.isBraking = false;
     this.isReversing = false;
     this.skidMarks = [];
+    this.steeringGuidePoints = [];
+    this.steeringGuideAngle = 0;
+    this.steeringGuideDirection = 1;
   }
 
-  update(inputs) {
+  update(inputs, dt = 1 / 60) {
     // Save state before update for collision resolution
     this.prevX = this.x;
     this.prevY = this.y;
@@ -52,20 +60,15 @@ class Bus {
     const b = CONFIG.BUS;
 
     // 1. Steering Logic
+    const previousSteeringAngle = this.steeringAngle;
+    const steeringStep = b.STEER_SPEED * Math.min(dt, 0.05);
     if (inputs.left && !inputs.right) {
-      this.steeringAngle = Math.max(-b.MAX_STEER_ANGLE, this.steeringAngle - b.STEER_SPEED);
+      this.steeringAngle = Math.max(-b.MAX_STEER_ANGLE, this.steeringAngle - steeringStep);
     } else if (inputs.right && !inputs.left) {
-      this.steeringAngle = Math.min(b.MAX_STEER_ANGLE, this.steeringAngle + b.STEER_SPEED);
-    } else {
-      // Auto-center steering when released
-      if (Math.abs(this.steeringAngle) < b.STEER_RETURN_SPEED) {
-        this.steeringAngle = 0;
-      } else if (this.steeringAngle > 0) {
-        this.steeringAngle -= b.STEER_RETURN_SPEED;
-      } else {
-        this.steeringAngle += b.STEER_RETURN_SPEED;
-      }
+      this.steeringAngle = Math.min(b.MAX_STEER_ANGLE, this.steeringAngle + steeringStep);
     }
+    // With no steering input, retain the current wheel angle. The opposite
+    // direction must be pressed to bring the wheel back through center.
 
     // 2. Acceleration & Braking Logic
     this.isBraking = false;
@@ -97,6 +100,15 @@ class Bus {
       } else {
         this.speed += b.NATURAL_FRICTION;
       }
+    }
+
+    const guideDirection = this.speed < -0.05 ? -1 : 1;
+    const steeringChanged = Math.abs(this.steeringAngle - previousSteeringAngle) > 0.0001;
+    const directionChanged = guideDirection !== this.steeringGuideDirection;
+    if (steeringChanged || directionChanged || (this.steeringGuidePoints.length === 0 && Math.abs(this.steeringAngle) >= 0.015)) {
+      this.steeringGuidePoints = this.getSteeringGuidePoints(260, 10, guideDirection);
+      this.steeringGuideAngle = this.steeringAngle;
+      this.steeringGuideDirection = guideDirection;
     }
 
     // 3. Kinematic Bicycle Model
@@ -140,6 +152,94 @@ class Bus {
       { x: this.x - fX - sX, y: this.y - fY - sY }, // Rear Right
       { x: this.x - fX + sX, y: this.y - fY + sY }  // Rear Left
     ];
+  }
+
+  // Build a short bicycle-model trajectory for the on-screen steering guide.
+  getSteeringGuidePoints(distance = 260, segmentLength = 10, movementDirection = this.speed < -0.05 ? -1 : 1) {
+    if (Math.abs(this.steeringAngle) < 0.015) return [];
+
+    const signedStep = segmentLength * movementDirection;
+    let x = this.x;
+    let y = this.y;
+    let angle = this.angle;
+    const allPoints = [{ x, y }];
+    const startStep = Math.ceil((this.length / 2 + 8) / segmentLength);
+    const steps = startStep + Math.max(1, Math.floor(distance / segmentLength));
+
+    for (let i = 0; i < steps; i++) {
+      angle += (signedStep / this.wheelbase) * Math.tan(this.steeringAngle);
+      x += signedStep * Math.cos(angle);
+      y += signedStep * Math.sin(angle);
+      allPoints.push({ x, y });
+    }
+
+    return allPoints.slice(startStep);
+  }
+
+  drawSteeringGuide(ctx) {
+    const anchoredPoints = this.steeringGuidePoints;
+    if (anchoredPoints.length < 2) return;
+
+    // Remove only the part already driven over; the remaining dots never
+    // translate with the bus and therefore stay painted on the map.
+    let closestIndex = 0;
+    let closestDistanceSq = Infinity;
+    for (let i = 0; i < anchoredPoints.length; i++) {
+      const dx = anchoredPoints[i].x - this.x;
+      const dy = anchoredPoints[i].y - this.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq < closestDistanceSq) {
+        closestDistanceSq = distanceSq;
+        closestIndex = i;
+      }
+    }
+    if (closestIndex >= anchoredPoints.length - 2) return;
+    const points = anchoredPoints.slice(closestIndex);
+
+    const drawPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+    };
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([3, 11]);
+
+    // Dark outline keeps the guide legible on both asphalt and markings.
+    ctx.globalAlpha = 0.48;
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 7;
+    drawPath();
+
+    ctx.globalAlpha = 0.82;
+    ctx.strokeStyle = this.steeringAngle < 0 ? '#7DD3FC' : '#F9A8D4';
+    ctx.lineWidth = 3;
+    drawPath();
+
+    // Add a small arrow at the predicted end point.
+    ctx.setLineDash([]);
+    const end = points[points.length - 1];
+    const beforeEnd = points[points.length - 2];
+    const endAngle = Math.atan2(end.y - beforeEnd.y, end.x - beforeEnd.x);
+    ctx.translate(end.x, end.y);
+    ctx.rotate(endAngle);
+    ctx.fillStyle = this.steeringAngle < 0 ? '#7DD3FC' : '#F9A8D4';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(9, 0);
+    ctx.lineTo(-5, -7);
+    ctx.lineTo(-2, 0);
+    ctx.lineTo(-5, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   // Draw bus and all detailed elements on canvas

@@ -22,8 +22,7 @@ const CONFIG = {
     NATURAL_FRICTION: 0.035, // Coasting drag
 
     MAX_STEER_ANGLE: 0.68, // ~39 degrees
-    STEER_SPEED: 0.07,     // Steering responds faster than acceleration
-    STEER_RETURN_SPEED: 0.018 // Gradual recentering makes tap-to-turn practical
+    STEER_SPEED: 1.0       // Radians per second; full lock takes about 0.68 sec
   },
 
   PARKING: {
@@ -40,7 +39,7 @@ const CONFIG = {
     {
       level: 1,
       label: '연습',
-      description: '정면의 넓은 주차 칸',
+      description: '연습 주차장 · 정면 한 자리',
       spotIds: [2],
       spotWidth: 82,
       spotLength: 172,
@@ -52,8 +51,8 @@ const CONFIG = {
     {
       level: 2,
       label: '보통',
-      description: '좌우로 꺾어서 주차',
-      spotIds: [1, 3],
+      description: '도심 공사 구역 · 좌측 한 자리',
+      spotIds: [1],
       spotWidth: 66,
       spotLength: 148,
       angleToleranceDeg: 21,
@@ -64,8 +63,8 @@ const CONFIG = {
     {
       level: 3,
       label: '도전',
-      description: '좁은 평행 주차',
-      spotIds: [4, 5],
+      description: '야간 터미널 · 평행 한 자리',
+      spotIds: [4],
       spotWidth: 52,
       spotLength: 130,
       angleToleranceDeg: 13,

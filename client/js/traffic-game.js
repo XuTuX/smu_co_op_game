@@ -523,11 +523,13 @@ class ObstacleDodgeGame {
       .filter((lane) => !occupiedLanes.has(lane));
     const lane = available[Math.floor(Math.random() * available.length)] ?? 0;
     const progress = this.getDifficultyProgress();
+    const warningDuration = 1.35 - progress * 0.45;
     this.lasers.push({
       orientation,
       lane,
       phase: 'warning',
-      timer: 1.35 - progress * 0.45,
+      timer: warningDuration,
+      warningDuration,
       activeDuration: 0.72 + progress * 0.12,
       thickness: 22,
       hit: false
@@ -566,6 +568,7 @@ class ObstacleDodgeGame {
       if (laser.phase === 'warning' && laser.timer <= 0) {
         laser.phase = 'active';
         laser.timer = laser.activeDuration;
+        this.soundEngine.playLaser?.();
       }
       if (laser.phase === 'active') {
         if (!laser.hit && this.player.invulnerable <= 0 && this.laserCollidesWithPlayer(laser)) {
@@ -752,17 +755,36 @@ class ObstacleDodgeGame {
       const center = horizontal
         ? this.arena.top + laser.lane * this.verticalStep + this.verticalStep / 2
         : this.arena.left + (laser.lane + 0.5) * this.cellWidth;
+      const length = horizontal
+        ? this.arena.right - this.arena.left
+        : this.arena.bottom - this.arena.top;
       ctx.save();
+      ctx.beginPath();
+      ctx.rect(this.arena.left, this.arena.top, this.arena.right - this.arena.left, this.arena.bottom - this.arena.top);
+      ctx.clip();
+
       if (laser.phase === 'warning') {
-        const pulse = 0.32 + Math.abs(Math.sin(laser.timer * 10)) * 0.28;
-        ctx.globalAlpha = pulse;
-        ctx.fillStyle = '#ff5a43';
-        if (horizontal) ctx.fillRect(this.arena.left, center - 18, this.arena.right - this.arena.left, 36);
-        else ctx.fillRect(center - 18, this.arena.top, 36, this.arena.bottom - this.arena.top);
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = '#ffdd57';
-        ctx.lineWidth = 6;
-        ctx.setLineDash([18, 14]);
+        const warningDuration = laser.warningDuration || 1.35;
+        const charge = Math.max(0, Math.min(1, 1 - laser.timer / warningDuration));
+        const pulse = 0.18 + (0.18 + charge * 0.28)
+          * Math.abs(Math.sin(this.elapsed * (9 + charge * 20)));
+        const warningGlow = horizontal
+          ? ctx.createLinearGradient(0, center - 30, 0, center + 30)
+          : ctx.createLinearGradient(center - 30, 0, center + 30, 0);
+        warningGlow.addColorStop(0, 'rgba(255,34,20,0)');
+        warningGlow.addColorStop(0.5, `rgba(255,55,28,${pulse.toFixed(3)})`);
+        warningGlow.addColorStop(1, 'rgba(255,34,20,0)');
+        ctx.fillStyle = warningGlow;
+        if (horizontal) ctx.fillRect(this.arena.left, center - 30, length, 60);
+        else ctx.fillRect(center - 30, this.arena.top, 60, length);
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(255,224,105,${0.55 + charge * 0.4})`;
+        ctx.shadowColor = '#ff3b20';
+        ctx.shadowBlur = 8 + charge * 12;
+        ctx.lineWidth = 2 + charge * 2;
+        ctx.setLineDash([13, 11]);
+        ctx.lineDashOffset = -this.elapsed * (70 + charge * 100);
         ctx.beginPath();
         if (horizontal) {
           ctx.moveTo(this.arena.left, center);
@@ -773,33 +795,158 @@ class ObstacleDodgeGame {
         }
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalCompositeOperation = 'source-over';
+        this.drawLaserEmitter(
+          horizontal ? this.arena.left + 6 : center,
+          horizontal ? center : this.arena.top + 6,
+          horizontal ? 0 : Math.PI / 2,
+          charge,
+          false
+        );
+        this.drawLaserEmitter(
+          horizontal ? this.arena.right - 6 : center,
+          horizontal ? center : this.arena.bottom - 6,
+          horizontal ? Math.PI : -Math.PI / 2,
+          charge,
+          false
+        );
+
         ctx.fillStyle = '#ffdd57';
         ctx.strokeStyle = '#28231f';
         ctx.lineWidth = 3;
         if (horizontal) {
-          this.drawWarningMarker(this.arena.left + 25, center, 0);
-          this.drawWarningMarker(this.arena.right - 25, center, Math.PI);
+          this.drawWarningMarker(this.arena.left + 58, center, 0);
+          this.drawWarningMarker(this.arena.right - 58, center, Math.PI);
         } else {
-          this.drawWarningMarker(center, this.arena.top + 25, Math.PI / 2);
-          this.drawWarningMarker(center, this.arena.bottom - 25, -Math.PI / 2);
+          this.drawWarningMarker(center, this.arena.top + 58, Math.PI / 2);
+          this.drawWarningMarker(center, this.arena.bottom - 58, -Math.PI / 2);
         }
       } else {
-        ctx.shadowColor = '#ff3b30';
-        ctx.shadowBlur = 24;
-        ctx.fillStyle = '#fff4a3';
-        if (horizontal) ctx.fillRect(this.arena.left, center - laser.thickness / 2, this.arena.right - this.arena.left, laser.thickness);
-        else ctx.fillRect(center - laser.thickness / 2, this.arena.top, laser.thickness, this.arena.bottom - this.arena.top);
-        ctx.shadowBlur = 12;
-        ctx.strokeStyle = '#ff3b30';
-        ctx.lineWidth = 6;
+        const age = laser.activeDuration - laser.timer;
+        const envelope = Math.min(1, age * 12) * Math.min(1, laser.timer * 9);
+        const flicker = (0.94 + Math.sin(this.elapsed * 57 + laser.lane * 1.7) * 0.06) * envelope;
+        const outerGlow = horizontal
+          ? ctx.createLinearGradient(0, center - 48, 0, center + 48)
+          : ctx.createLinearGradient(center - 48, 0, center + 48, 0);
+        outerGlow.addColorStop(0, 'rgba(255,0,0,0)');
+        outerGlow.addColorStop(0.32, `rgba(255,20,0,${(0.12 * flicker).toFixed(3)})`);
+        outerGlow.addColorStop(0.5, `rgba(255,58,8,${(0.5 * flicker).toFixed(3)})`);
+        outerGlow.addColorStop(0.68, `rgba(255,20,0,${(0.12 * flicker).toFixed(3)})`);
+        outerGlow.addColorStop(1, 'rgba(255,0,0,0)');
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = outerGlow;
+        if (horizontal) ctx.fillRect(this.arena.left, center - 48, length, 96);
+        else ctx.fillRect(center - 48, this.arena.top, 96, length);
+
+        const plasma = horizontal
+          ? ctx.createLinearGradient(0, center - laser.thickness / 2, 0, center + laser.thickness / 2)
+          : ctx.createLinearGradient(center - laser.thickness / 2, 0, center + laser.thickness / 2, 0);
+        plasma.addColorStop(0, 'rgba(255,35,5,0.25)');
+        plasma.addColorStop(0.18, '#ff3b0a');
+        plasma.addColorStop(0.38, '#ffb21c');
+        plasma.addColorStop(0.5, '#fffbe8');
+        plasma.addColorStop(0.62, '#ffcf3b');
+        plasma.addColorStop(0.82, '#ff3b0a');
+        plasma.addColorStop(1, 'rgba(255,35,5,0.25)');
+        ctx.globalAlpha = flicker;
+        ctx.shadowColor = '#ff2a00';
+        ctx.shadowBlur = 28;
+        ctx.fillStyle = plasma;
+        if (horizontal) ctx.fillRect(this.arena.left, center - laser.thickness / 2, length, laser.thickness);
+        else ctx.fillRect(center - laser.thickness / 2, this.arena.top, laser.thickness, length);
+
+        ctx.shadowColor = '#fff2b0';
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = 'rgba(255,255,245,.95)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
         if (horizontal) {
-          ctx.beginPath(); ctx.moveTo(this.arena.left, center); ctx.lineTo(this.arena.right, center); ctx.stroke();
+          ctx.moveTo(this.arena.left, center);
+          ctx.lineTo(this.arena.right, center);
         } else {
-          ctx.beginPath(); ctx.moveTo(center, this.arena.top); ctx.lineTo(center, this.arena.bottom); ctx.stroke();
+          ctx.moveTo(center, this.arena.top);
+          ctx.lineTo(center, this.arena.bottom);
         }
+        ctx.stroke();
+
+        // Fast moving hot spots make the beam feel unstable instead of painted on.
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 12;
+        for (let index = 0; index < 7; index++) {
+          const travel = (this.elapsed * (520 + index * 37) + index * length / 7) % length;
+          const radius = 2.2 + (index % 3) * 0.8;
+          ctx.beginPath();
+          ctx.arc(
+            horizontal ? this.arena.left + travel : center,
+            horizontal ? center : this.arena.top + travel,
+            radius,
+            0,
+            Math.PI * 2
+          );
+          ctx.fillStyle = 'rgba(255,255,235,.9)';
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        this.drawLaserEmitter(
+          horizontal ? this.arena.left + 6 : center,
+          horizontal ? center : this.arena.top + 6,
+          horizontal ? 0 : Math.PI / 2,
+          1,
+          true
+        );
+        this.drawLaserEmitter(
+          horizontal ? this.arena.right - 6 : center,
+          horizontal ? center : this.arena.bottom - 6,
+          horizontal ? Math.PI : -Math.PI / 2,
+          1,
+          true
+        );
       }
       ctx.restore();
     }
+  }
+
+  drawLaserEmitter(x, y, rotation, charge, active) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.shadowBlur = active ? 18 : 8;
+    ctx.shadowColor = active ? '#ff3b0a' : 'rgba(255,80,20,.7)';
+    ctx.fillStyle = '#172229';
+    ctx.strokeStyle = '#8da4aa';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, -23);
+    ctx.lineTo(18, -18);
+    ctx.lineTo(25, -10);
+    ctx.lineTo(25, 10);
+    ctx.lineTo(18, 18);
+    ctx.lineTo(-10, 23);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = active ? 14 : 5;
+    ctx.fillStyle = active ? '#fff7cc' : `rgba(255,91,35,${0.3 + charge * 0.7})`;
+    ctx.strokeStyle = active ? '#ff4b12' : '#763321';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(22, 0, 8, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(220,239,241,.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-4, -15);
+    ctx.lineTo(12, -12);
+    ctx.moveTo(-4, 15);
+    ctx.lineTo(12, 12);
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawWarningMarker(x, y, rotation) {

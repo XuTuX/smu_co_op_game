@@ -14,7 +14,7 @@ class Game {
     this.map = new GameMap(CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
     this.bus = new Bus(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
     this.parkingJudge = new ParkingJudge();
-    this.inputManager = new InputManager();
+    this.inputManager = new InputManager({ latchSteering: true });
     this.soundEngine = new SoundEngine();
     this.ui = new UIController();
 
@@ -23,7 +23,7 @@ class Game {
     });
 
     // Game state
-    this.state = 'TITLE'; // 'TITLE' | 'COUNTDOWN' | 'PLAYING' | 'GAMEOVER'
+    this.state = 'TITLE'; // 'TITLE' | 'COUNTDOWN' | 'PLAYING' | 'TRANSITION' | 'GAMEOVER'
     this.score = 0;
     this.parkCount = 0;
     this.level = 1;
@@ -77,8 +77,10 @@ class Game {
   startCountdown() {
     this.soundEngine.init(); // Initialize audio context on user interaction
     this.state = 'COUNTDOWN';
+    document.body.classList.add('is-playing');
     this.ui.hideStartScreen();
     this.ui.hideGameOver();
+    this.ui.hideStageTransition();
 
     // Reset game variables
     this.score = 0;
@@ -90,7 +92,8 @@ class Game {
     this.particles = [];
     this.skidMarks = [];
 
-    // Reset bus position
+    // Always restart from the first one-bay map.
+    this.map.setStage(1);
     this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
     this.ui.updateSteering(this.bus.steeringAngle, CONFIG.BUS.MAX_STEER_ANGLE);
     this.applyDifficulty(1);
@@ -131,23 +134,40 @@ class Game {
     this.ui.updateScore(this.score);
     const previousLevel = this.level;
     const nextLevel = Math.min(CONFIG.DIFFICULTY.length, this.parkCount + 1);
-    const nextDifficulty = this.applyDifficulty(nextLevel);
-    this.ui.showSuccessBanner(
-      CONFIG.PARKING.POINTS_PER_SUCCESS,
-      nextLevel > previousLevel ? nextDifficulty : null
-    );
+    const advancesToNewMap = nextLevel > previousLevel;
+    const nextDifficulty = CONFIG.DIFFICULTY[nextLevel - 1];
     this.soundEngine.playSuccess();
 
     // Spawn Confetti Particles
     this.spawnConfetti(spot.x, spot.y);
 
-    // Delay next spot slightly for pleasant transition
-    setTimeout(() => {
-      if (this.state === 'PLAYING') {
-        const nextSpot = this.map.getSpotForLevel(this.level, spot.id, this.bus.x, this.bus.y);
+    if (advancesToNewMap) {
+      this.state = 'TRANSITION';
+      this.inputManager.resetAll();
+      this.ui.showStageTransition(CONFIG.PARKING.POINTS_PER_SUCCESS, nextDifficulty);
+
+      setTimeout(() => {
+        if (this.state !== 'TRANSITION') return;
+        this.map.setStage(nextLevel);
+        this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
+        this.applyDifficulty(nextLevel);
+        const nextSpot = this.map.getSpotForLevel(nextLevel, null, this.bus.x, this.bus.y);
         this.parkingJudge.setTargetSpot(nextSpot);
-      }
-    }, 600);
+        this.particles = [];
+        this.ui.hideStageTransition();
+        this.state = 'PLAYING';
+      }, 1150);
+      return;
+    }
+
+    // The final map can be replayed for more score until time expires.
+    this.ui.showSuccessBanner(CONFIG.PARKING.POINTS_PER_SUCCESS, null);
+    setTimeout(() => {
+      if (this.state !== 'PLAYING') return;
+      this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
+      const nextSpot = this.map.getSpotForLevel(this.level, null, this.bus.x, this.bus.y);
+      this.parkingJudge.setTargetSpot(nextSpot);
+    }, 700);
   }
 
   handleCollision(collisionData) {
@@ -227,7 +247,7 @@ class Game {
       const inputs = this.inputManager.getCombinedState();
 
       // Update bus physics
-      this.bus.update(inputs);
+      this.bus.update(inputs, dt);
 
       // Check obstacle and wall collisions
       CollisionSystem.checkBusCollisions(this.bus, this.map, (data) => this.handleCollision(data));
@@ -275,6 +295,9 @@ class Game {
 
     // Render Target Parking Bay & Dwell progress
     this.parkingJudge.draw(this.ctx, this.bus);
+
+    // Show the approximate direction implied by the retained steering angle.
+    this.bus.drawSteeringGuide(this.ctx);
 
     // Render Bus
     this.bus.draw(this.ctx);

@@ -2,7 +2,8 @@
  * Unified Input Manager: Merges Keyboard (W/A/S/D/Arrows) and ESP32 controller inputs
  */
 class InputManager {
-  constructor() {
+  constructor(options = {}) {
+    this.latchSteering = Boolean(options.latchSteering);
     this.keyboardState = {
       forward: false,
       backward: false,
@@ -87,6 +88,7 @@ class InputManager {
       button.addEventListener('pointercancel', release);
       button.addEventListener('lostpointercapture', release);
       button.addEventListener('click', () => {
+        if (this.latchSteering && (action === 'left' || action === 'right')) return;
         const pulseMs = action === 'left' || action === 'right' ? 450 : 150;
         this.pulseAction(action, pulseMs);
       });
@@ -106,6 +108,7 @@ class InputManager {
     window.addEventListener('keyup', (e) => {
       this.handleKeyEvent(e.code, false);
       const action = this.getActionForCode(e.code);
+      if (this.latchSteering && (action === 'left' || action === 'right')) return;
       const pulseMs = action === 'left' || action === 'right' ? 250 : 100;
       this.pulseAction(action, pulseMs);
     });

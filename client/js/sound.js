@@ -102,6 +102,31 @@ class SoundEngine {
       whiteNoise.stop(this.ctx.currentTime + 0.15);
     } catch (e) {}
   }
+
+  playLaser() {
+    if (this.isMuted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const oscillator = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(1450, now);
+      oscillator.frequency.exponentialRampToValueAtTime(190, now + 0.18);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1800, now);
+      filter.Q.setValueAtTime(1.8, now);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+      oscillator.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.24);
+    } catch (e) {}
+  }
 }
 
 window.SoundEngine = SoundEngine;

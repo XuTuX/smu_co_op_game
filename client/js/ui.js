@@ -13,7 +13,7 @@ class UIController {
     this.difficultyText = document.getElementById('difficulty-text');
     this.steeringHud = document.getElementById('steering-hud');
     this.steeringDirection = document.getElementById('steering-direction');
-    this.steeringIndicator = document.getElementById('steering-indicator');
+    this.steeringWheel = document.getElementById('steering-wheel');
     this.steeringValue = document.getElementById('steering-value');
 
     // Button Indicator Elements
@@ -28,6 +28,10 @@ class UIController {
     this.countdownOverlay = document.getElementById('countdown-overlay');
     this.countdownText = document.getElementById('countdown-text');
     this.successBanner = document.getElementById('success-banner');
+    this.stageTransition = document.getElementById('stage-transition');
+    this.stageTransitionKicker = document.getElementById('stage-transition-kicker');
+    this.stageTransitionLabel = document.getElementById('stage-transition-label');
+    this.stageTransitionName = document.getElementById('stage-transition-name');
     this.finalScoreElement = document.getElementById('final-score');
     this.finalParkCountElement = document.getElementById('final-park-count');
 
@@ -77,7 +81,7 @@ class UIController {
   }
 
   updateSteering(steeringAngle, maxSteeringAngle) {
-    if (!this.steeringHud || !this.steeringIndicator || !this.steeringValue || !this.steeringDirection) return;
+    if (!this.steeringHud || !this.steeringWheel || !this.steeringValue || !this.steeringDirection) return;
     const normalized = Math.max(-1, Math.min(1, steeringAngle / maxSteeringAngle));
     const amount = Math.round(Math.abs(normalized) * 100);
     const direction = normalized < -0.02 ? 'left' : normalized > 0.02 ? 'right' : 'center';
@@ -86,7 +90,7 @@ class UIController {
     this.steeringHud.setAttribute('aria-label', `핸들 ${labels[direction]} ${amount}%`);
     this.steeringDirection.textContent = labels[direction];
     this.steeringValue.textContent = `${amount}%`;
-    this.steeringIndicator.style.left = `${(normalized + 1) * 50}%`;
+    this.steeringWheel.style.transform = `rotate(${normalized * 135}deg)`;
   }
 
   updateEsp32Status(isConnected) {
@@ -140,6 +144,18 @@ class UIController {
 
   hideCountdown() {
     this.countdownOverlay.classList.add('hidden');
+  }
+
+  showStageTransition(scoreAdded, difficulty) {
+    if (!this.stageTransition) return;
+    this.stageTransition.className = `overlay stage-transition stage-${difficulty.level}`;
+    if (this.stageTransitionKicker) this.stageTransitionKicker.textContent = `AREA CLEAR! +${scoreAdded}`;
+    if (this.stageTransitionLabel) this.stageTransitionLabel.textContent = `STAGE ${difficulty.level}`;
+    if (this.stageTransitionName) this.stageTransitionName.textContent = difficulty.description.split(' · ')[0];
+  }
+
+  hideStageTransition() {
+    if (this.stageTransition) this.stageTransition.classList.add('hidden');
   }
 
   showSuccessBanner(scoreAdded = 10, nextDifficulty = null) {

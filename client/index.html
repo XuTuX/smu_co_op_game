@@ -7,7 +7,7 @@
   <title>Bus Co-op Club — Parking</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="parking-page">
   <div class="page-shell">
     <header class="site-header">
       <div class="brand-lockup" aria-label="Bus Co-op Club">
@@ -34,7 +34,7 @@
       <a class="mode-link" href="traffic.html"><span>02</span> 장애물 피하기</a>
     </nav>
 
-    <main class="game-card">
+    <main class="game-card parking-card">
       <div class="game-meta-row">
         <div class="game-card-label"><span aria-hidden="true">👀</span> LIVE PARKING TEST</div>
         <div id="difficulty-badge" class="difficulty-badge stage-1">
@@ -43,7 +43,7 @@
         </div>
       </div>
 
-      <section class="stats-row" aria-label="게임 상태">
+      <section class="stats-row parking-stats" aria-label="게임 상태">
         <div class="stat-block stat-score">
           <span class="stat-label">SCORE</span>
           <strong id="score-value">0</strong>
@@ -60,7 +60,7 @@
         </div>
       </section>
 
-      <section class="canvas-frame" aria-label="버스 주차 게임 화면">
+      <section class="canvas-frame parking-frame" aria-label="버스 주차 게임 화면">
         <canvas id="gameCanvas"></canvas>
 
         <div id="steering-hud" class="steering-hud" data-direction="center" aria-live="polite">
@@ -68,15 +68,16 @@
             <span>STEERING</span>
             <strong id="steering-direction">중앙</strong>
           </div>
-          <div class="steering-meter" aria-hidden="true">
-            <span class="steering-side">L</span>
-            <div class="steering-track">
-              <i class="steering-center"></i>
-              <i id="steering-indicator" class="steering-indicator"></i>
+          <div class="steering-wheel-panel" aria-hidden="true">
+            <span class="steering-side steering-left">L</span>
+            <div id="steering-wheel" class="steering-wheel">
+              <i class="steering-wheel-crossbar"></i>
+              <i class="steering-wheel-column"></i>
+              <i class="steering-wheel-hub"></i>
             </div>
-            <span class="steering-side">R</span>
+            <span class="steering-side steering-right">R</span>
           </div>
-          <div class="steering-amount"><span>조향량</span><strong id="steering-value">0%</strong></div>
+          <div class="steering-amount"><span>놓아도 각도 유지</span><strong id="steering-value">0%</strong></div>
         </div>
 
         <div id="input-status" class="input-status" aria-live="polite">INPUT READY</div>
@@ -104,6 +105,14 @@
 
         <div id="countdown-overlay" class="overlay countdown-overlay hidden">
           <div id="countdown-text" class="countdown-number">3</div>
+        </div>
+
+        <div id="stage-transition" class="overlay stage-transition hidden" aria-live="assertive">
+          <div class="stage-transition-card">
+            <span id="stage-transition-kicker">AREA CLEAR! +10</span>
+            <strong id="stage-transition-label">STAGE 2</strong>
+            <em id="stage-transition-name">도심 공사 구역</em>
+          </div>
         </div>
 
         <div id="start-modal" class="overlay modal-overlay">

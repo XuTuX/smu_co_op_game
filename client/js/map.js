@@ -14,30 +14,69 @@ class GameMap {
       { x: width - 10, y: height / 2, width: 20, height: height, type: 'wall' }      // Right
     ];
 
-    // Static obstacles (Parked cars, concrete islands, planters)
-    this.obstacles = [
-      // Beginner map: a few parked cars around the edges and a wide-open center.
-      { x: 360, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#3B82F6' },
-      { x: 840, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
-      { x: 360, y: 655, width: 44, height: 95, angle: 0, type: 'car', color: '#EC4899' },
-      { x: 840, y: 655, width: 44, height: 95, angle: 0, type: 'car', color: '#06B6D4' }
-    ];
+    // Each stage is a distinct one-bay map rather than a shared parking lot.
+    this.stageLayouts = {
+      1: {
+        name: '연습 주차장',
+        code: 'TRAINING LOT',
+        theme: { ground: '#1E2430', grid: '#262F3E', accent: '#FACC15', wall: '#374151' },
+        spawnPoint: { x: 600, y: 690, angle: -Math.PI / 2 },
+        parkingSpot: { id: 2, name: '연습장 정면 주차', x: 600, y: 145, angle: Math.PI / 2 },
+        obstacles: [
+          { x: 360, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#3B82F6' },
+          { x: 840, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
+          { x: 360, y: 655, width: 44, height: 95, angle: 0, type: 'car', color: '#EC4899' },
+          { x: 840, y: 655, width: 44, height: 95, angle: 0, type: 'car', color: '#06B6D4' }
+        ]
+      },
+      2: {
+        name: '도심 공사 구역',
+        code: 'CITY WORKS',
+        theme: { ground: '#2A2721', grid: '#373229', accent: '#FB923C', wall: '#57534E' },
+        spawnPoint: { x: 1000, y: 650, angle: Math.PI },
+        parkingSpot: { id: 1, name: '공사장 좌측 주차', x: 165, y: 150, angle: Math.PI / 2 },
+        obstacles: [
+          { x: 820, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
+          { x: 930, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#A855F7' },
+          { x: 570, y: 390, width: 105, height: 250, angle: 0, type: 'planter' },
+          { x: 360, y: 600, width: 230, height: 28, angle: 0, type: 'barrier' },
+          { x: 825, y: 500, width: 190, height: 28, angle: -0.18, type: 'barrier' }
+        ]
+      },
+      3: {
+        name: '야간 버스 터미널',
+        code: 'NIGHT TERMINAL',
+        theme: { ground: '#142B31', grid: '#1E3A40', accent: '#22D3EE', wall: '#334E55' },
+        spawnPoint: { x: 950, y: 665, angle: Math.PI },
+        parkingSpot: { id: 4, name: '터미널 평행 주차', x: 190, y: 385, angle: 0 },
+        obstacles: [
+          { x: 340, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#60A5FA' },
+          { x: 730, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#F472B6' },
+          { x: 910, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#FBBF24' },
+          { x: 610, y: 430, width: 100, height: 310, angle: 0, type: 'planter' },
+          { x: 350, y: 650, width: 210, height: 26, angle: 0, type: 'barrier' },
+          { x: 820, y: 520, width: 200, height: 26, angle: 0.12, type: 'barrier' }
+        ]
+      }
+    };
 
-    // Predefined Candidate Parking Slots (Large enough for Bus)
-    // Angles: 0 = horizontal facing right, PI/2 = vertical facing down, PI = horizontal facing left, -PI/2 = vertical facing up
-    this.parkingSpots = [
-      // Three roomy destination bays across the top.
-      { id: 1, name: 'A-1 (Top Left)', x: 150, y: 145, angle: Math.PI / 2, width: CONFIG.PARKING.WIDTH, length: CONFIG.PARKING.LENGTH },
-      { id: 2, name: 'A-2 (Top Center)', x: 600, y: 145, angle: Math.PI / 2, width: CONFIG.PARKING.WIDTH, length: CONFIG.PARKING.LENGTH },
-      { id: 3, name: 'A-3 (Top Right)', x: 1050, y: 145, angle: Math.PI / 2, width: CONFIG.PARKING.WIDTH, length: CONFIG.PARKING.LENGTH },
+    this.setStage(1);
+  }
 
-      // Two easy parallel bays on the outside of the open practice area.
-      { id: 4, name: 'B-1 (Left)', x: 170, y: 430, angle: 0, width: CONFIG.PARKING.WIDTH, length: CONFIG.PARKING.LENGTH },
-      { id: 5, name: 'B-2 (Right)', x: 1030, y: 430, angle: Math.PI, width: CONFIG.PARKING.WIDTH, length: CONFIG.PARKING.LENGTH }
-    ];
-
-    // Initial bus spawn position & angle
-    this.spawnPoint = { x: 600, y: 690, angle: -Math.PI / 2 };
+  setStage(level) {
+    const stage = Math.max(1, Math.min(Object.keys(this.stageLayouts).length, level));
+    const layout = this.stageLayouts[stage];
+    this.stage = stage;
+    this.stageName = layout.name;
+    this.stageCode = layout.code;
+    this.theme = { ...layout.theme };
+    this.spawnPoint = { ...layout.spawnPoint };
+    this.obstacles = layout.obstacles.map((obstacle) => ({ ...obstacle }));
+    this.parkingSpots = [{
+      ...layout.parkingSpot,
+      width: CONFIG.PARKING.WIDTH,
+      length: CONFIG.PARKING.LENGTH
+    }];
   }
 
   // Get a random new parking target that differs from current and isn't right on top of bus
@@ -82,11 +121,11 @@ class GameMap {
 
   draw(ctx) {
     // 1. Asphalt Ground
-    ctx.fillStyle = '#1E2430';
+    ctx.fillStyle = this.theme.ground;
     ctx.fillRect(0, 0, this.width, this.height);
 
     // Subtle asphalt texture grid
-    ctx.strokeStyle = '#262F3E';
+    ctx.strokeStyle = this.theme.grid;
     ctx.lineWidth = 1;
     for (let x = 40; x < this.width; x += 60) {
       ctx.beginPath();
@@ -100,6 +139,8 @@ class GameMap {
       ctx.lineTo(this.width, y);
       ctx.stroke();
     }
+
+    this.drawStageStamp(ctx);
 
     // 2. Road Lanes & Driving Area Markers
     this.drawRoadMarkings(ctx);
@@ -117,22 +158,36 @@ class GameMap {
   drawRoadMarkings(ctx) {
     ctx.save();
 
-    // Central Driving Way (Two-way lane markings)
-    ctx.strokeStyle = '#FACC15'; // Yellow dashed center line
+    ctx.strokeStyle = this.theme.accent;
     ctx.lineWidth = 3;
     ctx.setLineDash([20, 15]);
 
-    // Top driving lane
-    ctx.beginPath();
-    ctx.moveTo(80, 275);
-    ctx.lineTo(1120, 275);
-    ctx.stroke();
-
-    // Bottom driving lane
-    ctx.beginPath();
-    ctx.moveTo(80, 525);
-    ctx.lineTo(1120, 525);
-    ctx.stroke();
+    if (this.stage === 1) {
+      ctx.beginPath();
+      ctx.moveTo(80, 275);
+      ctx.lineTo(1120, 275);
+      ctx.moveTo(80, 525);
+      ctx.lineTo(1120, 525);
+      ctx.stroke();
+    } else if (this.stage === 2) {
+      ctx.beginPath();
+      ctx.moveTo(1080, 690);
+      ctx.lineTo(1080, 560);
+      ctx.lineTo(700, 560);
+      ctx.quadraticCurveTo(620, 560, 620, 480);
+      ctx.lineTo(620, 270);
+      ctx.quadraticCurveTo(620, 230, 570, 230);
+      ctx.lineTo(90, 230);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.roundRect(105, 95, this.width - 210, this.height - 190, 80);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(90, 520);
+      ctx.lineTo(1110, 520);
+      ctx.stroke();
+    }
 
     ctx.setLineDash([]); // Reset line dash
 
@@ -141,12 +196,30 @@ class GameMap {
     ctx.lineWidth = 2;
     ctx.strokeRect(40, 40, this.width - 80, this.height - 80);
 
-    // Directional Driving Arrows
-    this.drawArrow(ctx, 350, 275, 0);          // Eastbound top
-    this.drawArrow(ctx, 850, 275, 0);          // Eastbound top
-    this.drawArrow(ctx, 850, 525, Math.PI);    // Westbound bottom
-    this.drawArrow(ctx, 350, 525, Math.PI);    // Westbound bottom
+    if (this.stage === 1) {
+      this.drawArrow(ctx, 350, 275, 0);
+      this.drawArrow(ctx, 850, 275, 0);
+      this.drawArrow(ctx, 850, 525, Math.PI);
+      this.drawArrow(ctx, 350, 525, Math.PI);
+    } else if (this.stage === 2) {
+      this.drawArrow(ctx, 880, 560, Math.PI);
+      this.drawArrow(ctx, 620, 350, -Math.PI / 2);
+      this.drawArrow(ctx, 360, 230, Math.PI);
+    } else {
+      this.drawArrow(ctx, 930, 520, Math.PI);
+      this.drawArrow(ctx, 270, 520, Math.PI);
+      this.drawArrow(ctx, 1080, 335, -Math.PI / 2);
+    }
 
+    ctx.restore();
+  }
+
+  drawStageStamp(ctx) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.font = '900 42px ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`0${this.stage} · ${this.stageCode}`, 62, 82);
     ctx.restore();
   }
 
@@ -272,7 +345,7 @@ class GameMap {
     this.walls.forEach(w => {
       ctx.save();
       // Outer Curb texture
-      ctx.fillStyle = '#374151';
+      ctx.fillStyle = this.theme.wall;
       ctx.fillRect(w.x - w.width / 2, w.y - w.height / 2, w.width, w.height);
 
       // Yellow/Black caution pattern on border
