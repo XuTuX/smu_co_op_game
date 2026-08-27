@@ -9,6 +9,8 @@ const app = express();
 
 // Serve static client files
 const clientPath = path.join(__dirname, '..', 'client');
+const assetPath = path.join(__dirname, '..', 'assets');
+app.use('/assets', express.static(assetPath));
 app.use(express.static(clientPath));
 
 // API endpoint to get server info / IP for easy setup

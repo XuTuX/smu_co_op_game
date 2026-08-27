@@ -67,6 +67,7 @@ class Game {
     // Initial UI state
     this.ui.updateScore(this.score);
     this.ui.updateTime(this.timeRemaining);
+    this.ui.updateSteering(this.bus.steeringAngle, CONFIG.BUS.MAX_STEER_ANGLE);
     this.ui.showStartScreen();
 
     // Start 60fps loop
@@ -91,6 +92,7 @@ class Game {
 
     // Reset bus position
     this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
+    this.ui.updateSteering(this.bus.steeringAngle, CONFIG.BUS.MAX_STEER_ANGLE);
     this.applyDifficulty(1);
     const spot = this.map.getSpotForLevel(1, null, this.bus.x, this.bus.y);
     this.parkingJudge.setTargetSpot(spot);
@@ -255,6 +257,7 @@ class Game {
 
     // Update particles
     this.updateParticles(dt);
+    this.ui.updateSteering(this.bus.steeringAngle, CONFIG.BUS.MAX_STEER_ANGLE);
 
     // 2. RENDER PIPELINE
     this.ctx.save();
@@ -287,6 +290,9 @@ class Game {
     this.canvas.dataset.busY = this.bus.y.toFixed(2);
     this.canvas.dataset.busAngle = this.bus.angle.toFixed(4);
     this.canvas.dataset.busSpeed = this.bus.speed.toFixed(3);
+    const steeringPercent = Math.round((this.bus.steeringAngle / CONFIG.BUS.MAX_STEER_ANGLE) * 100);
+    this.canvas.dataset.steeringAngle = this.bus.steeringAngle.toFixed(4);
+    this.canvas.dataset.steeringPercent = String(steeringPercent);
 
     // Continue loop
     requestAnimationFrame((t) => this.loop(t));

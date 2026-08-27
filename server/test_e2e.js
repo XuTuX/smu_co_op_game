@@ -10,6 +10,7 @@ const TEST_PORT = 3199;
 
 // Spin up a test server instance
 const app = express();
+app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 app.use(express.static(path.join(__dirname, '..', 'client')));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -85,6 +86,17 @@ wss.on('connection', (ws) => {
 async function runTest() {
   await new Promise(resolve => server.listen(TEST_PORT, resolve));
   console.log(`[TEST] Test server started on port ${TEST_PORT}`);
+
+  const assetResponse = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${TEST_PORT}/assets/charcter_movement/stay.png`, (response) => {
+      response.resume();
+      response.on('end', () => resolve(response));
+    }).on('error', reject);
+  });
+  if (assetResponse.statusCode !== 200 || assetResponse.headers['content-type'] !== 'image/png') {
+    throw new Error(`Expected player asset PNG, got ${assetResponse.statusCode} ${assetResponse.headers['content-type']}`);
+  }
+  console.log('✅ TEST PASSED: obstacle-dodge character asset is served');
 
   // 1. Connect Browser Client
   const browserWs = new WebSocket(`ws://localhost:${TEST_PORT}`);

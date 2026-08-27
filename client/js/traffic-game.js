@@ -6,22 +6,30 @@ class ObstacleDodgeGame {
   constructor() {
     this.canvas = document.getElementById('trafficCanvas');
     this.ctx = this.canvas.getContext('2d');
-    this.canvas.width = 1200;
+    this.canvas.width = 1600;
     this.canvas.height = 894;
 
     this.inputManager = new InputManager();
     this.soundEngine = new SoundEngine();
     this.network = new NetworkClient(this.inputManager, (connected) => this.updateHardwareStatus(connected));
 
-    this.arena = { left: 120, right: 1080, top: 24, bottom: 870, columns: 8, rows: 9 };
+    this.arena = { left: 120, right: 1480, top: 24, bottom: 870, columns: 11, rows: 9 };
     this.cellWidth = (this.arena.right - this.arena.left) / this.arena.columns;
     this.verticalStep = 94;
+    this.playerSpawn = {
+      x: this.arena.left + (Math.floor(this.arena.columns / 2) + 0.5) * this.cellWidth,
+      y: this.arena.top + 5.5 * this.verticalStep
+    };
     this.doubleWaveScore = 150;
     this.laserUnlockScore = 300;
+    this.doubleLaserScore = 500;
     this.player = {
-      x: 660, y: 541, targetX: 660, targetY: 541,
-      radius: 27, invulnerable: 0, hop: 0
+      x: this.playerSpawn.x, y: this.playerSpawn.y,
+      targetX: this.playerSpawn.x, targetY: this.playerSpawn.y,
+      radius: 27, invulnerable: 0, hop: 0, animationTime: 0,
+      movePose: 'stay'
     };
+    this.playerSprites = this.loadPlayerSprites();
     this.inputRepeat = this.createInputRepeatState();
     this.hazards = [];
     this.lasers = [];
@@ -39,6 +47,7 @@ class ObstacleDodgeGame {
     this.nextSideWaveIsDouble = true;
     this.lastDownWaveSize = 0;
     this.lastSideWaveSize = 0;
+    this.lastLaserWaveSize = 0;
     this.lastDownColumn = -1;
     this.elapsed = 0;
     this.score = 0;
@@ -63,6 +72,22 @@ class ObstacleDodgeGame {
       left: { wasPressed: false, held: 0, repeating: false },
       right: { wasPressed: false, held: 0, repeating: false }
     };
+  }
+
+  loadPlayerSprites() {
+    const spriteFiles = {
+      stay: 'stay.png',
+      left: 'left-transparent.png',
+      right: 'right.png',
+      jump: 'jump.png',
+      down: 'down.png'
+    };
+    return Object.fromEntries(Object.entries(spriteFiles).map(([name, fileName]) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = `/assets/charcter_movement/${fileName}?v=20260827-2`;
+      return [name, image];
+    }));
   }
 
   bindUI() {
@@ -97,8 +122,10 @@ class ObstacleDodgeGame {
 
   resetGame() {
     Object.assign(this.player, {
-      x: 660, y: 541, targetX: 660, targetY: 541,
-      invulnerable: 0, hop: 0
+      x: this.playerSpawn.x, y: this.playerSpawn.y,
+      targetX: this.playerSpawn.x, targetY: this.playerSpawn.y,
+      invulnerable: 0, hop: 0, animationTime: 0,
+      movePose: 'stay'
     });
     this.inputRepeat = this.createInputRepeatState();
     this.hazards = [];
@@ -115,6 +142,7 @@ class ObstacleDodgeGame {
     this.nextSideWaveIsDouble = true;
     this.lastDownWaveSize = 0;
     this.lastSideWaveSize = 0;
+    this.lastLaserWaveSize = 0;
     this.lastDownColumn = -1;
     this.elapsed = 0;
     this.score = 0;
@@ -156,7 +184,7 @@ class ObstacleDodgeGame {
     this.elapsed += dt;
     this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
 
-    const nextLevel = Math.min(5, 1 + Math.floor(this.score / this.doubleWaveScore));
+    const nextLevel = Math.min(8, 1 + Math.floor(this.score / 100));
     if (nextLevel !== this.level) {
       this.level = nextLevel;
     }
@@ -167,13 +195,13 @@ class ObstacleDodgeGame {
     this.downSpawnTimer -= dt;
     if (this.downSpawnTimer <= 0) {
       this.spawnDownWave(this.getWaveSize('down'));
-      this.downSpawnTimer = Math.max(0.48, 1.28 - (this.level - 1) * 0.17) * (0.88 + Math.random() * 0.28);
+      this.downSpawnTimer = this.getDownSpawnDelay();
     }
 
     this.sideSpawnTimer -= dt;
     if (this.sideSpawnTimer <= 0) {
       this.spawnSideWave(this.getWaveSize('side'));
-      this.sideSpawnTimer = Math.max(1.5, 3.9 - (this.level - 1) * 0.45) * (0.9 + Math.random() * 0.22);
+      this.sideSpawnTimer = this.getSideSpawnDelay();
     }
 
     this.collectibleTimer -= dt;
@@ -184,9 +212,9 @@ class ObstacleDodgeGame {
 
     if (this.score >= this.laserUnlockScore) {
       this.laserSpawnTimer -= dt;
-      if (this.laserSpawnTimer <= 0 && this.lasers.length < 2) {
-        this.spawnLaser();
-        this.laserSpawnTimer = Math.max(3.8, 6.4 - (this.level - 3) * 0.7) + Math.random() * 0.8;
+      if (this.laserSpawnTimer <= 0 && this.lasers.length === 0) {
+        this.spawnLaserWave(this.getLaserWaveSize());
+        this.laserSpawnTimer = this.getLaserSpawnDelay();
       }
     }
 
@@ -200,9 +228,38 @@ class ObstacleDodgeGame {
   getWaveSize(type) {
     if (this.score < this.doubleWaveScore) return 1;
     const key = type === 'down' ? 'nextDownWaveIsDouble' : 'nextSideWaveIsDouble';
-    const size = this[key] ? 2 : 1;
+    if (this.score < 350) {
+      const size = this[key] ? 2 : 1;
+      this[key] = !this[key];
+      return size;
+    }
+    if (this.score < 700) return 2;
+    const size = this[key] ? 3 : 2;
     this[key] = !this[key];
     return size;
+  }
+
+  getDifficultyProgress() {
+    return Math.min(1, this.score / 800);
+  }
+
+  getDownSpawnDelay() {
+    const progress = this.getDifficultyProgress();
+    return (1.28 - progress * 0.75) * (0.9 + Math.random() * 0.2);
+  }
+
+  getSideSpawnDelay() {
+    const progress = this.getDifficultyProgress();
+    return (3.9 - progress * 2.3) * (0.92 + Math.random() * 0.16);
+  }
+
+  getLaserSpawnDelay() {
+    const progress = this.getDifficultyProgress();
+    return 6.4 - progress * 2.6 + Math.random() * 0.6;
+  }
+
+  getLaserWaveSize() {
+    return this.score >= this.doubleLaserScore ? 2 : 1;
   }
 
   updatePlayer(dt) {
@@ -216,6 +273,10 @@ class ObstacleDodgeGame {
     const moveX = (step.right ? 1 : 0) - (step.left ? 1 : 0);
     const moveY = (step.backward ? 1 : 0) - (step.forward ? 1 : 0);
     if (moveX !== 0 || moveY !== 0) {
+      if (moveY < 0) this.player.movePose = 'jump';
+      else if (moveY > 0) this.player.movePose = 'down';
+      else if (moveX < 0) this.player.movePose = 'left';
+      else this.player.movePose = 'right';
       this.trail.push({ x: this.player.x, y: this.player.y, alpha: 0.48 });
       if (this.trail.length > 24) this.trail.shift();
       this.player.targetX += moveX * this.cellWidth;
@@ -229,6 +290,13 @@ class ObstacleDodgeGame {
     this.player.x += (this.player.targetX - this.player.x) * ease;
     this.player.y += (this.player.targetY - this.player.y) * ease;
     this.player.hop = Math.max(0, this.player.hop - dt * 5.5);
+    const distanceToTarget = Math.hypot(
+      this.player.targetX - this.player.x,
+      this.player.targetY - this.player.y
+    );
+    this.player.animationTime = distanceToTarget > 0.75
+      ? this.player.animationTime + dt
+      : 0;
     this.player.invulnerable = Math.max(0, this.player.invulnerable - dt);
     for (const point of this.trail) point.alpha = Math.max(0, point.alpha - dt * 0.24);
     this.trail = this.trail.filter((point) => point.alpha > 0);
@@ -282,6 +350,7 @@ class ObstacleDodgeGame {
       .filter((column) => !excludedColumns.has(column));
     const pool = candidates.length ? candidates : fallback;
     const column = pool[Math.floor(Math.random() * pool.length)];
+    const downSpeed = this.getDownSpeed();
     this.lastDownColumn = column;
     this.hazards.push({
       type: 'down',
@@ -291,11 +360,26 @@ class ObstacleDodgeGame {
       width: 68,
       height: 68,
       vx: 0,
-      vy: 138 + (this.level - 1) * 32,
+      vy: downSpeed,
       hit: false,
       color: '#f0b84d'
     });
     return column;
+  }
+
+  getDownSpeed() {
+    const progress = this.getDifficultyProgress();
+    return 138 + progress * 142 + Math.random() * (12 + progress * 28);
+  }
+
+  getSideSpeed() {
+    const progress = this.getDifficultyProgress();
+    return 180 + progress * 170 + Math.random() * (15 + progress * 30);
+  }
+
+  pickSpeedBand(bands, offset = 0) {
+    const [minSpeed, maxSpeed] = bands[Math.floor(Math.random() * bands.length)];
+    return minSpeed + offset + Math.random() * (maxSpeed - minSpeed);
   }
 
   spawnSideWave(count) {
@@ -317,6 +401,7 @@ class ObstacleDodgeGame {
     const pool = nearbyRows.length ? nearbyRows : fallbackRows;
     const row = pool[Math.floor(Math.random() * pool.length)];
     const direction = this.nextSideDirection;
+    const sideSpeed = this.getSideSpeed();
     this.nextSideDirection *= -1;
     this.hazards.push({
       type: 'side',
@@ -325,7 +410,7 @@ class ObstacleDodgeGame {
       y: this.arena.top + row * this.verticalStep + this.verticalStep / 2,
       width: 68,
       height: 68,
-      vx: direction * (180 + (this.level - 1) * 38),
+      vx: direction * sideSpeed,
       vy: 0,
       hit: false,
       color: direction < 0 ? '#9dd7f5' : '#f5a9c1'
@@ -334,14 +419,43 @@ class ObstacleDodgeGame {
   }
 
   spawnCollectible() {
-    const column = Math.floor(Math.random() * this.arena.columns);
+    let x = this.arena.left + 70 + Math.random() * (this.arena.right - this.arena.left - 140);
+    let y = this.arena.top + 70 + Math.random() * (this.arena.bottom - this.arena.top - 140);
+    for (let attempt = 0; attempt < 10 && Math.hypot(x - this.player.x, y - this.player.y) < 180; attempt++) {
+      x = this.arena.left + 70 + Math.random() * (this.arena.right - this.arena.left - 140);
+      y = this.arena.top + 70 + Math.random() * (this.arena.bottom - this.arena.top - 140);
+    }
+    const speed = this.pickStarSpeed();
+    const angle = Math.random() * Math.PI * 2;
     this.collectibles.push({
-      x: this.arena.left + (column + 0.5) * this.cellWidth,
-      y: this.arena.top - 36,
+      x,
+      y,
       radius: 23,
-      vy: 58 + this.level * 6,
-      rotation: 0
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      rotation: 0,
+      age: 0,
+      life: 12 + Math.random() * 5,
+      turnTimer: 0.35 + Math.random() * 0.75,
+      wobblePhase: Math.random() * Math.PI * 2
     });
+  }
+
+  pickStarSpeed() {
+    return this.pickSpeedBand([
+      [48, 66],
+      [78, 102],
+      [118, 148]
+    ]);
+  }
+
+  redirectStar(star, angleOffset = 0) {
+    const currentAngle = Math.atan2(star.vy, star.vx);
+    const nextAngle = currentAngle + angleOffset + (Math.random() - 0.5) * Math.PI * 0.95;
+    const speed = this.pickStarSpeed();
+    star.vx = Math.cos(nextAngle) * speed;
+    star.vy = Math.sin(nextAngle) * speed;
+    star.turnTimer = 0.35 + Math.random() * 0.75;
   }
 
   spawnLaser() {
@@ -354,15 +468,21 @@ class ObstacleDodgeGame {
     const available = Array.from({ length: laneCount }, (_, lane) => lane)
       .filter((lane) => !occupiedLanes.has(lane));
     const lane = available[Math.floor(Math.random() * available.length)] ?? 0;
+    const progress = this.getDifficultyProgress();
     this.lasers.push({
       orientation,
       lane,
       phase: 'warning',
-      timer: 1.35,
-      activeDuration: 0.72,
+      timer: 1.35 - progress * 0.45,
+      activeDuration: 0.72 + progress * 0.12,
       thickness: 22,
       hit: false
     });
+  }
+
+  spawnLaserWave(count) {
+    for (let index = 0; index < count; index++) this.spawnLaser();
+    this.lastLaserWaveSize = count;
   }
 
   updateHazards(dt) {
@@ -415,8 +535,42 @@ class ObstacleDodgeGame {
   updateCollectibles(dt) {
     for (let index = this.collectibles.length - 1; index >= 0; index--) {
       const star = this.collectibles[index];
+      star.age += dt;
+      star.life -= dt;
+      star.turnTimer -= dt;
+      if (star.turnTimer <= 0) this.redirectStar(star);
+
+      const curve = Math.sin(star.age * 5.2 + star.wobblePhase) * 0.85 * dt;
+      const cos = Math.cos(curve);
+      const sin = Math.sin(curve);
+      const curvedVx = star.vx * cos - star.vy * sin;
+      star.vy = star.vx * sin + star.vy * cos;
+      star.vx = curvedVx;
+      star.x += star.vx * dt;
       star.y += star.vy * dt;
-      star.rotation += dt * 2.4;
+      star.rotation += dt * (2.4 + Math.hypot(star.vx, star.vy) / 70);
+
+      let bounced = false;
+      if (star.x - star.radius < this.arena.left) {
+        star.x = this.arena.left + star.radius;
+        star.vx = Math.abs(star.vx);
+        bounced = true;
+      } else if (star.x + star.radius > this.arena.right) {
+        star.x = this.arena.right - star.radius;
+        star.vx = -Math.abs(star.vx);
+        bounced = true;
+      }
+      if (star.y - star.radius < this.arena.top) {
+        star.y = this.arena.top + star.radius;
+        star.vy = Math.abs(star.vy);
+        bounced = true;
+      } else if (star.y + star.radius > this.arena.bottom) {
+        star.y = this.arena.bottom - star.radius;
+        star.vy = -Math.abs(star.vy);
+        bounced = true;
+      }
+      if (bounced) this.redirectStar(star);
+
       const dx = this.player.x - star.x;
       const dy = this.player.y - star.y;
       if (dx * dx + dy * dy <= (this.player.radius + star.radius) ** 2) {
@@ -426,7 +580,7 @@ class ObstacleDodgeGame {
         this.showToast('★ 별 획득 +10');
         continue;
       }
-      if (star.y - star.radius > this.arena.bottom + 50) this.collectibles.splice(index, 1);
+      if (star.life <= 0) this.collectibles.splice(index, 1);
     }
   }
 
@@ -452,8 +606,11 @@ class ObstacleDodgeGame {
   endGame() {
     this.state = 'GAMEOVER';
     this.inputManager.resetAll();
+    const resultMessage = this.score >= this.doubleWaveScore
+      ? '좋은 무빙이에요!'
+      : '괜찮은 움직임!';
+    document.getElementById('traffic-gameover-message').textContent = resultMessage;
     document.getElementById('traffic-final-score').textContent = this.score;
-    document.getElementById('traffic-final-distance').textContent = `${Math.floor(this.elapsed)}s`;
     document.getElementById('traffic-gameover-modal').classList.remove('hidden');
   }
 
@@ -471,7 +628,6 @@ class ObstacleDodgeGame {
     const lives = document.getElementById('traffic-lives');
     lives.textContent = hearts;
     lives.setAttribute('aria-label', `남은 목숨 ${this.lives}개`);
-    document.getElementById('traffic-speed').textContent = `X ${this.hazards.length} · ★ ${this.collectibles.length}`;
   }
 
   drawArena() {
@@ -500,7 +656,7 @@ class ObstacleDodgeGame {
 
   drawHazards() {
     for (const hazard of this.hazards) {
-      this.drawXBlock(hazard);
+      this.drawCubeBlock(hazard);
     }
   }
 
@@ -603,25 +759,56 @@ class ObstacleDodgeGame {
     }
   }
 
-  drawXBlock(hazard) {
+  drawCubeBlock(hazard) {
     const ctx = this.ctx;
-    const x = hazard.x - hazard.width / 2;
-    const y = hazard.y - hazard.height / 2;
-    const width = hazard.width;
-    const height = hazard.height;
+    const scale = Math.min(hazard.width, hazard.height) / 68;
+    const topColor = hazard.hit ? '#a33b22' : '#ffe77d';
+    const frontColor = hazard.hit ? '#7c2d12' : '#ffd84d';
+    const sideColor = hazard.hit ? '#5b1c0d' : '#d9a900';
+
+    ctx.save();
+    ctx.translate(hazard.x, hazard.y);
+    ctx.scale(scale, scale);
     ctx.fillStyle = 'rgba(0,0,0,.25)';
-    ctx.beginPath(); ctx.roundRect(x + 6, y + 7, width, height, 11); ctx.fill();
-    ctx.fillStyle = hazard.hit ? '#7c2d12' : hazard.color;
+    ctx.beginPath(); ctx.ellipse(5, 32, 31, 12, 0, 0, Math.PI * 2); ctx.fill();
+
     ctx.strokeStyle = '#28231f';
     ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.roundRect(x, y, width, height, 12); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = 'rgba(40,35,31,.72)';
-    ctx.lineWidth = 7;
-    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.fillStyle = topColor;
     ctx.beginPath();
-    ctx.moveTo(x + width * .33, y + height * .28); ctx.lineTo(x + width * .67, y + height * .72);
-    ctx.moveTo(x + width * .67, y + height * .28); ctx.lineTo(x + width * .33, y + height * .72);
+    ctx.moveTo(-28, -24);
+    ctx.lineTo(-18, -34);
+    ctx.lineTo(34, -34);
+    ctx.lineTo(26, -24);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
+
+    ctx.fillStyle = sideColor;
+    ctx.beginPath();
+    ctx.moveTo(26, -24);
+    ctx.lineTo(34, -34);
+    ctx.lineTo(34, 18);
+    ctx.lineTo(26, 28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = frontColor;
+    ctx.fillRect(-28, -24, 54, 52);
+    ctx.strokeRect(-28, -24, 54, 52);
+
+    ctx.fillStyle = '#28231f';
+    ctx.fillRect(-15, -10, 7, 8);
+    ctx.fillRect(8, -10, 7, 8);
+    ctx.fillStyle = hazard.hit ? '#f5a9c1' : '#ff6b35';
+    ctx.fillRect(-8, 2, 16, 9);
+    ctx.strokeStyle = '#28231f';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-8, 2, 16, 9);
+    ctx.restore();
   }
 
   drawTrail() {
@@ -637,19 +824,44 @@ class ObstacleDodgeGame {
 
   drawPlayer() {
     const ctx = this.ctx;
-    ctx.save();
     const hopLift = Math.sin((1 - this.player.hop) * Math.PI) * 13;
-    ctx.translate(this.player.x, this.player.y - hopLift);
+    const distanceToTarget = Math.hypot(
+      this.player.targetX - this.player.x,
+      this.player.targetY - this.player.y
+    );
+    let pose = 'stay';
+    if (this.player.hop > 0 || distanceToTarget > 0.75) pose = this.player.movePose;
+    const sprite = this.playerSprites[pose];
+    const walkBob = pose === 'left' || pose === 'right'
+      ? Math.sin(this.player.animationTime * 34) * 2
+      : 0;
+
+    ctx.save();
+    ctx.translate(this.player.x, this.player.y - hopLift + walkBob);
     if (this.player.invulnerable > 0 && Math.floor(this.player.invulnerable * 12) % 2 === 0) ctx.globalAlpha = 0.3;
     ctx.fillStyle = 'rgba(0,0,0,.25)';
-    ctx.beginPath(); ctx.ellipse(5, 31 + hopLift, 31, 13, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffe77d'; ctx.strokeStyle = '#28231f'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(-28,-24); ctx.lineTo(-18,-34); ctx.lineTo(34,-34); ctx.lineTo(26,-24); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#d9a900'; ctx.beginPath(); ctx.moveTo(26,-24); ctx.lineTo(34,-34); ctx.lineTo(34,18); ctx.lineTo(26,28); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffd84d'; ctx.fillRect(-28,-24,54,52); ctx.strokeRect(-28,-24,54,52);
-    ctx.fillStyle = '#28231f'; ctx.fillRect(-15,-10,7,8); ctx.fillRect(8,-10,7,8);
-    ctx.fillStyle = '#ff6b35'; ctx.fillRect(-8,2,16,9); ctx.strokeStyle = '#28231f'; ctx.lineWidth = 3; ctx.strokeRect(-8,2,16,9);
+    ctx.beginPath();
+    ctx.ellipse(3, 34 + hopLift - walkBob, 31, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (sprite.complete && sprite.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      const spriteSize = 84;
+      ctx.drawImage(sprite, -spriteSize / 2, -47, spriteSize, spriteSize);
+    } else {
+      // Keep a friendly non-box fallback visible during the first image download.
+      ctx.fillStyle = '#9a542f';
+      ctx.strokeStyle = '#4b1f0d';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(0, -14, 33, 38, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(-11, -20, 8, 0, Math.PI * 2); ctx.arc(11, -20, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#28231f';
+      ctx.beginPath(); ctx.arc(-9, -20, 3, 0, Math.PI * 2); ctx.arc(9, -20, 3, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
+    this.canvas.dataset.playerPose = pose;
   }
 
   draw() {
@@ -673,10 +885,23 @@ class ObstacleDodgeGame {
     this.canvas.dataset.rightMoving = String(this.hazards.filter((hazard) => hazard.type === 'side' && hazard.vx > 0).length);
     this.canvas.dataset.lastDownWave = String(this.lastDownWaveSize);
     this.canvas.dataset.lastSideWave = String(this.lastSideWaveSize);
+    const downSpeeds = this.hazards.filter((hazard) => hazard.type === 'down').map((hazard) => hazard.vy);
+    const sideSpeeds = this.hazards.filter((hazard) => hazard.type === 'side').map((hazard) => Math.abs(hazard.vx));
+    this.canvas.dataset.downMinSpeed = downSpeeds.length ? Math.min(...downSpeeds).toFixed(1) : '0';
+    this.canvas.dataset.downMaxSpeed = downSpeeds.length ? Math.max(...downSpeeds).toFixed(1) : '0';
+    this.canvas.dataset.sideMinSpeed = sideSpeeds.length ? Math.min(...sideSpeeds).toFixed(1) : '0';
+    this.canvas.dataset.sideMaxSpeed = sideSpeeds.length ? Math.max(...sideSpeeds).toFixed(1) : '0';
     this.canvas.dataset.lasers = String(this.lasers.length);
     this.canvas.dataset.laserWarnings = String(this.lasers.filter((laser) => laser.phase === 'warning').length);
     this.canvas.dataset.activeLasers = String(this.lasers.filter((laser) => laser.phase === 'active').length);
+    this.canvas.dataset.lastLaserWave = String(this.lastLaserWaveSize);
     this.canvas.dataset.stars = String(this.collectibles.length);
+    const trackedStar = this.collectibles[0];
+    this.canvas.dataset.starX = trackedStar ? trackedStar.x.toFixed(1) : '0';
+    this.canvas.dataset.starY = trackedStar ? trackedStar.y.toFixed(1) : '0';
+    this.canvas.dataset.starVx = trackedStar ? trackedStar.vx.toFixed(1) : '0';
+    this.canvas.dataset.starVy = trackedStar ? trackedStar.vy.toFixed(1) : '0';
+    this.canvas.dataset.starSpeed = trackedStar ? Math.hypot(trackedStar.vx, trackedStar.vy).toFixed(1) : '0';
     this.canvas.dataset.bonusScore = String(this.bonusScore);
   }
 

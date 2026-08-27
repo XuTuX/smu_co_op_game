@@ -11,6 +11,10 @@ class UIController {
     this.difficultyBadge = document.getElementById('difficulty-badge');
     this.stageLabel = document.getElementById('stage-label');
     this.difficultyText = document.getElementById('difficulty-text');
+    this.steeringHud = document.getElementById('steering-hud');
+    this.steeringDirection = document.getElementById('steering-direction');
+    this.steeringIndicator = document.getElementById('steering-indicator');
+    this.steeringValue = document.getElementById('steering-value');
 
     // Button Indicator Elements
     this.btnForward = document.getElementById('btn-forward');
@@ -70,6 +74,19 @@ class UIController {
         this.timeElement.classList.remove('urgent');
       }
     }
+  }
+
+  updateSteering(steeringAngle, maxSteeringAngle) {
+    if (!this.steeringHud || !this.steeringIndicator || !this.steeringValue || !this.steeringDirection) return;
+    const normalized = Math.max(-1, Math.min(1, steeringAngle / maxSteeringAngle));
+    const amount = Math.round(Math.abs(normalized) * 100);
+    const direction = normalized < -0.02 ? 'left' : normalized > 0.02 ? 'right' : 'center';
+    const labels = { left: '왼쪽', right: '오른쪽', center: '중앙' };
+    this.steeringHud.dataset.direction = direction;
+    this.steeringHud.setAttribute('aria-label', `핸들 ${labels[direction]} ${amount}%`);
+    this.steeringDirection.textContent = labels[direction];
+    this.steeringValue.textContent = `${amount}%`;
+    this.steeringIndicator.style.left = `${(normalized + 1) * 50}%`;
   }
 
   updateEsp32Status(isConnected) {

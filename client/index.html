@@ -63,6 +63,22 @@
       <section class="canvas-frame" aria-label="버스 주차 게임 화면">
         <canvas id="gameCanvas"></canvas>
 
+        <div id="steering-hud" class="steering-hud" data-direction="center" aria-live="polite">
+          <div class="steering-heading">
+            <span>STEERING</span>
+            <strong id="steering-direction">중앙</strong>
+          </div>
+          <div class="steering-meter" aria-hidden="true">
+            <span class="steering-side">L</span>
+            <div class="steering-track">
+              <i class="steering-center"></i>
+              <i id="steering-indicator" class="steering-indicator"></i>
+            </div>
+            <span class="steering-side">R</span>
+          </div>
+          <div class="steering-amount"><span>조향량</span><strong id="steering-value">0%</strong></div>
+        </div>
+
         <div id="input-status" class="input-status" aria-live="polite">INPUT READY</div>
 
         <div class="canvas-controls" aria-label="게임 화면 조작 패드">

@@ -167,6 +167,46 @@ button { color: inherit; }
 }
 
 #gameCanvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.steering-hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 12;
+  width: 190px;
+  border: 2px solid var(--ink);
+  border-radius: 15px;
+  background: rgba(255, 253, 247, .92);
+  box-shadow: 3px 4px 0 var(--ink);
+  padding: 9px 11px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+}
+.steering-heading,
+.steering-amount { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.steering-heading span,
+.steering-amount span { font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.steering-heading strong { font-size: 12px; }
+.steering-amount { margin-top: 4px; color: var(--muted); }
+.steering-amount strong { color: var(--ink); font-size: 13px; }
+.steering-meter { display: grid; grid-template-columns: 12px 1fr 12px; gap: 5px; align-items: center; margin-top: 7px; }
+.steering-side { font-size: 9px; font-weight: 950; text-align: center; }
+.steering-track { position: relative; height: 8px; border: 2px solid var(--ink); border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--yellow) 50%, var(--pink)); }
+.steering-center { position: absolute; top: -4px; bottom: -4px; left: 50%; width: 2px; background: var(--ink); transform: translateX(-50%); }
+.steering-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 1px 2px 0 var(--ink);
+  transform: translate(-50%, -50%);
+  transition: left 70ms linear, background 70ms linear;
+}
+.steering-hud[data-direction="left"] .steering-indicator { background: var(--blue); }
+.steering-hud[data-direction="right"] .steering-indicator { background: var(--pink); }
 .input-status {
   position: absolute;
   top: 16px;
@@ -360,6 +400,12 @@ kbd {
 }
 
 @media (max-width: 620px) {
+  .steering-hud { top: 8px; left: 8px; width: 145px; padding: 6px 8px; box-shadow: 2px 3px 0 var(--ink); }
+  .steering-heading span,
+  .steering-amount span { font-size: 7px; }
+  .steering-heading strong,
+  .steering-amount strong { font-size: 9px; }
+  .steering-meter { margin-top: 4px; }
   .page-shell { width: min(100% - 20px, 560px); }
   .site-header { align-items: flex-start; }
   .brand-mark { width: 50px; height: 50px; font-size: 25px; }

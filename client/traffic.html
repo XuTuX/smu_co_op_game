@@ -41,7 +41,6 @@
         <div class="stat-block stat-score">
           <span class="stat-label">SCORE</span>
           <strong id="traffic-score">0</strong>
-          <span class="stat-note">SURVIVAL</span>
         </div>
         <div class="stat-copy">
           <h2>빈칸을 찾아<br><span>끝까지 살아남기</span></h2>
@@ -50,7 +49,6 @@
         <div class="stat-block traffic-lives-card">
           <span class="stat-label">BUS LIFE</span>
           <strong id="traffic-lives" aria-label="남은 목숨 3개">♥♥♥</strong>
-          <span class="stat-note" id="traffic-speed">OBSTACLES 0</span>
         </div>
       </section>
 
@@ -78,7 +76,6 @@
           <div class="modal-card traffic-modal">
             <div class="modal-badge traffic-badge">BLOCK HOP</div>
             <h2 class="modal-title">4명이 함께<br><span>장애물 피하기</span></h2>
-            <p class="modal-subtitle">150점부터 X 박스가 2개씩, 300점부터는 경고선 다음 레이저가 등장합니다. 별은 +10점!</p>
             <div class="role-grid">
               <div class="role-card role-p1"><span class="role-badge">P1</span><strong>위</strong><kbd>W / ↑</kbd></div>
               <div class="role-card role-p2"><span class="role-badge">P2</span><strong>아래</strong><kbd>S / ↓</kbd></div>
@@ -92,10 +89,9 @@
         <div id="traffic-gameover-modal" class="overlay modal-overlay hidden">
           <div class="modal-card gameover-card">
             <div class="modal-badge badge-red">GAME OVER</div>
-            <h2 class="modal-title">생존 종료</h2>
+            <h2 id="traffic-gameover-message" class="modal-title">괜찮은 움직임!</h2>
             <div class="score-summary">
-              <div class="summary-box"><span class="summary-label">FINAL SCORE</span><strong id="traffic-final-score">0</strong></div>
-              <div class="summary-box"><span class="summary-label">SURVIVED</span><strong id="traffic-final-distance">0s</strong></div>
+              <div class="summary-box"><span class="summary-label">SCORE</span><strong id="traffic-final-score">0</strong></div>
             </div>
             <button id="traffic-restart-btn" class="btn btn-primary btn-large" type="button">다시 도전 <span aria-hidden="true">↻</span></button>
           </div>
