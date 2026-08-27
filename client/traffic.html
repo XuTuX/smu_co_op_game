@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fff5db">
+  <title>Bus Co-op Club — Falling Maze</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="traffic.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="brand-lockup" aria-label="Bus Co-op Club">
+        <div class="brand-mark traffic-brand" aria-hidden="true">B</div>
+        <div>
+          <p class="eyebrow">4-PLAYER CO-OP</p>
+          <h1>Bus Co-op Club</h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="traffic-hardware-badge" class="status-badge local">
+          <span class="status-dot"></span>
+          <span id="traffic-hardware-text">PC TEST MODE</span>
+        </div>
+        <button id="traffic-sound-btn" class="round-button" type="button" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">🔊</button>
+      </div>
+    </header>
+
+    <nav class="mode-switch" aria-label="게임 선택">
+      <a class="mode-link" href="index.html"><span>01</span> 버스 주차</a>
+      <a class="mode-link active traffic-active" href="traffic.html"><span>02</span> 장애물 피하기</a>
+    </nav>
+
+    <main class="game-card traffic-card">
+      <div class="game-meta-row">
+        <div class="game-card-label"><span aria-hidden="true">✦</span> FALLING GRID</div>
+        <div id="traffic-level-badge" class="difficulty-badge traffic-level">
+          <span>LEVEL</span><strong id="traffic-level">1 · 여유</strong>
+        </div>
+      </div>
+
+      <section class="stats-row traffic-stats" aria-label="장애물 피하기 게임 상태">
+        <div class="stat-block stat-score">
+          <span class="stat-label">SCORE</span>
+          <strong id="traffic-score">0</strong>
+          <span class="stat-note">SURVIVAL</span>
+        </div>
+        <div class="stat-copy">
+          <h2>빈칸을 찾아<br><span>끝까지 살아남기</span></h2>
+          <p>P1 위 · P2 아래 · P3 왼쪽 · P4 오른쪽</p>
+        </div>
+        <div class="stat-block traffic-lives-card">
+          <span class="stat-label">BUS LIFE</span>
+          <strong id="traffic-lives" aria-label="남은 목숨 3개">♥♥♥</strong>
+          <span class="stat-note" id="traffic-speed">OBSTACLES 0</span>
+        </div>
+      </section>
+
+      <section class="canvas-frame traffic-frame" aria-label="위에서 내려오는 장애물 피하기 게임 화면">
+        <canvas id="trafficCanvas"></canvas>
+        <div id="traffic-input-status" class="input-status">INPUT READY</div>
+        <div id="traffic-toast" class="traffic-toast hidden" aria-live="assertive"></div>
+
+        <div class="canvas-controls" aria-label="장애물 피하기 조작 패드">
+          <div class="canvas-control-group">
+            <button class="canvas-control p3" type="button" data-action="left" aria-label="장애물 게임 왼쪽 버튼"><span aria-hidden="true">←</span><small>A</small></button>
+            <button class="canvas-control p4" type="button" data-action="right" aria-label="장애물 게임 오른쪽 버튼"><span aria-hidden="true">→</span><small>D</small></button>
+          </div>
+          <div class="canvas-control-group">
+            <button class="canvas-control p1" type="button" data-action="forward" aria-label="장애물 게임 위쪽 버튼"><span aria-hidden="true">↑</span><small>W</small></button>
+            <button class="canvas-control p2" type="button" data-action="backward" aria-label="장애물 게임 아래쪽 버튼"><span aria-hidden="true">↓</span><small>S</small></button>
+          </div>
+        </div>
+
+        <div id="traffic-countdown" class="overlay countdown-overlay hidden">
+          <div id="traffic-countdown-text" class="countdown-number">3</div>
+        </div>
+
+        <div id="traffic-start-modal" class="overlay modal-overlay">
+          <div class="modal-card traffic-modal">
+            <div class="modal-badge traffic-badge">BLOCK HOP</div>
+            <h2 class="modal-title">4명이 함께<br><span>장애물 피하기</span></h2>
+            <p class="modal-subtitle">블록 캐릭터를 한 칸씩 움직여 위에서 내려오는 X 장애물의 빈 통로를 찾으세요.</p>
+            <div class="role-grid">
+              <div class="role-card role-p1"><span class="role-badge">P1</span><strong>위</strong><kbd>W / ↑</kbd></div>
+              <div class="role-card role-p2"><span class="role-badge">P2</span><strong>아래</strong><kbd>S / ↓</kbd></div>
+              <div class="role-card role-p3"><span class="role-badge">P3</span><strong>왼쪽</strong><kbd>A / ←</kbd></div>
+              <div class="role-card role-p4"><span class="role-badge">P4</span><strong>오른쪽</strong><kbd>D / →</kbd></div>
+            </div>
+            <button id="traffic-start-btn" class="btn btn-primary btn-large traffic-start" type="button">게임 시작 <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+
+        <div id="traffic-gameover-modal" class="overlay modal-overlay hidden">
+          <div class="modal-card gameover-card">
+            <div class="modal-badge badge-red">GAME OVER</div>
+            <h2 class="modal-title">생존 종료</h2>
+            <div class="score-summary">
+              <div class="summary-box"><span class="summary-label">FINAL SCORE</span><strong id="traffic-final-score">0</strong></div>
+              <div class="summary-box"><span class="summary-label">SURVIVED</span><strong id="traffic-final-distance">0s</strong></div>
+            </div>
+            <button id="traffic-restart-btn" class="btn btn-primary btn-large" type="button">다시 도전 <span aria-hidden="true">↻</span></button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/traffic-game.js"></script>
+</body>
+</html>

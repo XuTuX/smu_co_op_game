@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fff5db">
+  <title>Bus Co-op Club — Parking</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="brand-lockup" aria-label="Bus Co-op Club">
+        <div class="brand-mark" aria-hidden="true">B</div>
+        <div>
+          <p class="eyebrow">4-PLAYER CO-OP</p>
+          <h1>Bus Co-op Club</h1>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="esp32-badge" class="status-badge local">
+          <span class="status-dot"></span>
+          <span id="esp32-status-text">PC TEST MODE</span>
+        </div>
+        <button id="sound-toggle-btn" class="round-button" type="button" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">
+          <span id="sound-icon">🔊</span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="mode-switch" aria-label="게임 선택">
+      <a class="mode-link active" href="index.html"><span>01</span> 버스 주차</a>
+      <a class="mode-link" href="traffic.html"><span>02</span> 장애물 피하기</a>
+    </nav>
+
+    <main class="game-card">
+      <div class="game-meta-row">
+        <div class="game-card-label"><span aria-hidden="true">👀</span> LIVE PARKING TEST</div>
+        <div id="difficulty-badge" class="difficulty-badge stage-1">
+          <span id="stage-label">STAGE 1</span>
+          <strong id="difficulty-text">연습 · 정면의 넓은 주차 칸</strong>
+        </div>
+      </div>
+
+      <section class="stats-row" aria-label="게임 상태">
+        <div class="stat-block stat-score">
+          <span class="stat-label">SCORE</span>
+          <strong id="score-value">0</strong>
+          <span class="stat-note">POINTS</span>
+        </div>
+        <div class="stat-copy">
+          <h2>60초 안에<br><span>완벽하게 주차!</span></h2>
+          <p>주차 칸에 버스를 정렬하고 1초간 멈추면 +10점</p>
+        </div>
+        <div class="stat-block stat-time">
+          <span class="stat-label">TIME LEFT</span>
+          <div><strong id="time-value">60</strong><span class="stat-unit">SEC</span></div>
+          <span class="stat-note">DON'T PANIC</span>
+        </div>
+      </section>
+
+      <section class="canvas-frame" aria-label="버스 주차 게임 화면">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="input-status" class="input-status" aria-live="polite">INPUT READY</div>
+
+        <div class="canvas-controls" aria-label="게임 화면 조작 패드">
+          <div class="canvas-control-group">
+            <button class="canvas-control p3" type="button" data-action="left" aria-label="게임 화면 좌회전 버튼">
+              <span aria-hidden="true">←</span><small>A</small>
+            </button>
+            <button class="canvas-control p4" type="button" data-action="right" aria-label="게임 화면 우회전 버튼">
+              <span aria-hidden="true">→</span><small>D</small>
+            </button>
+          </div>
+          <div class="canvas-control-group">
+            <button class="canvas-control p1" type="button" data-action="forward" aria-label="게임 화면 전진 버튼">
+              <span aria-hidden="true">↑</span><small>W</small>
+            </button>
+            <button class="canvas-control p2" type="button" data-action="backward" aria-label="게임 화면 후진 버튼">
+              <span aria-hidden="true">↓</span><small>S</small>
+            </button>
+          </div>
+        </div>
+
+        <div id="success-banner" class="success-banner hidden">PARKING SUCCESS! +10</div>
+
+        <div id="countdown-overlay" class="overlay countdown-overlay hidden">
+          <div id="countdown-text" class="countdown-number">3</div>
+        </div>
+
+        <div id="start-modal" class="overlay modal-overlay">
+          <div class="modal-card">
+            <div class="modal-badge">PARKING MODE</div>
+            <h2 class="modal-title">4명이 함께<br><span>버스 주차</span></h2>
+            <p class="modal-subtitle">전진·브레이크·좌·우를 한 명씩 맡아 제한 시간 안에 주차하세요.</p>
+
+            <div class="role-grid">
+              <div class="role-card role-p1"><span class="role-badge">P1</span><strong>전진</strong><kbd>W / ↑</kbd></div>
+              <div class="role-card role-p2"><span class="role-badge">P2</span><strong>후진</strong><kbd>S / ↓</kbd></div>
+              <div class="role-card role-p3"><span class="role-badge">P3</span><strong>좌회전</strong><kbd>A / ←</kbd></div>
+              <div class="role-card role-p4"><span class="role-badge">P4</span><strong>우회전</strong><kbd>D / →</kbd></div>
+            </div>
+
+            <button id="start-btn" class="btn btn-primary btn-large" type="button">
+              게임 시작 <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="gameover-modal" class="overlay modal-overlay hidden">
+          <div class="modal-card gameover-card">
+            <div class="modal-badge badge-red">TIME'S UP!</div>
+            <h2 class="modal-title">테스트 완료!</h2>
+            <div class="score-summary">
+              <div class="summary-box"><span class="summary-label">FINAL SCORE</span><strong id="final-score">0</strong></div>
+              <div class="summary-box"><span class="summary-label">PARKED BUSES</span><strong id="final-park-count">0</strong></div>
+            </div>
+            <button id="restart-btn" class="btn btn-primary btn-large" type="button">PLAY AGAIN <span aria-hidden="true">↻</span></button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/collision.js"></script>
+  <script src="js/parking.js"></script>
+  <script src="js/bus.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
