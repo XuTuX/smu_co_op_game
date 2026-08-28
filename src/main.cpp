@@ -35,9 +35,9 @@ const uint8_t AP_CHANNEL = 1;
 const uint8_t AP_MAX_CLIENTS = 4;
 const uint16_t WEBSOCKET_PORT = 81;
 
-// Temporary one-button setup: read the Forward/P1 action from GPIO 4 on any ESP32.
-// Change to 0 when all four buttons are ready to restore the normal board pin map.
-#define SINGLE_BUTTON_TEST_MODE 1
+// Hardware-test mode: open the 4-button test page at the root URL.
+// On a standard ESP32 it also maps Forward/P1 to GPIO 4 for a one-button bench test.
+#define BUTTON_TEST_MODE 1
 
 const IPAddress AP_IP(192, 168, 4, 1);
 const IPAddress AP_GATEWAY(192, 168, 4, 1);
@@ -46,7 +46,7 @@ const IPAddress AP_SUBNET(255, 255, 255, 0);
 // ============================================================================
 // 2. GPIO PIN ASSIGNMENTS
 // ============================================================================
-#if SINGLE_BUTTON_TEST_MODE
+#if BUTTON_TEST_MODE
   #define PIN_FORWARD   4
   #if defined(CONFIG_IDF_TARGET_ESP32S3)
     #define PIN_BACKWARD  5
@@ -105,9 +105,9 @@ unsigned long lastWifiCheckTime = 0;
 
 const char FALLBACK_TEST_PAGE[] PROGMEM = R"rawliteral(
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ESP32 GPIO 4 Test</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff5db;color:#28231f;font-family:system-ui,sans-serif}.card{width:min(92%,620px);border:3px solid;border-radius:24px;padding:28px;background:#fffdf7;box-shadow:9px 10px 0 #28231f;text-align:center}h1{font-size:clamp(30px,8vw,54px);margin:0 0 8px}.badge{display:inline-block;border:2px solid;border-radius:999px;padding:7px 12px;font-weight:900}.button{margin:26px auto;width:180px;height:180px;border:3px solid;border-radius:50%;display:grid;place-items:center;background:#ef604c;box-shadow:0 18px 0 #a8362b,0 21px 0 3px #28231f;font-size:24px;font-weight:900;transition:.12s}.pressed .button{background:#89d79a;transform:translateY(15px);box-shadow:0 3px 0 #559d64,0 6px 0 3px #28231f}.state{font-size:34px;font-weight:950}.small{color:#766d62;font-weight:700}.links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:24px}.links a{color:inherit;border:2px solid;border-radius:999px;padding:9px 13px;text-decoration:none;font-weight:900}</style></head>
-<body><main id="card" class="card"><span id="net" class="badge">연결 중</span><h1>GPIO 4 버튼 테스트</h1><p class="small">GPIO 4와 GND 사이의 버튼을 눌러보세요.</p><div class="button">GPIO 4</div><div id="state" class="state">입력 대기</div><p id="raw" class="small">WebSocket 연결을 기다리는 중입니다.</p><nav class="links"><a href="/button-test.html">상세 테스트</a><a href="/index.html">버스 주차</a><a href="/traffic.html">장애물 피하기</a></nav></main>
-<script>const card=document.getElementById('card'),net=document.getElementById('net'),state=document.getElementById('state'),raw=document.getElementById('raw');const ws=new WebSocket('ws://'+location.hostname+':81');ws.onopen=()=>{net.textContent='ESP32 연결됨';raw.textContent='버튼 입력을 기다리는 중입니다.'};ws.onclose=()=>{net.textContent='연결 끊김';state.textContent='재연결 필요'};ws.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='input'){const p=!!m.data.forward;card.classList.toggle('pressed',p);state.textContent=p?'버튼 눌림!':'버튼 떼짐';raw.textContent=p?'INPUT_PULLUP · LOW · forward: true':'INPUT_PULLUP · HIGH · forward: false'}else if(m.type==='ping')ws.send(JSON.stringify({type:'pong'}))}catch(_){}};</script></body></html>
+<title>ESP32 4 Button Test</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff5db;color:#28231f;font-family:system-ui,sans-serif}.card{width:min(94%,760px);border:3px solid;border-radius:24px;padding:28px;background:#fffdf7;box-shadow:9px 10px 0 #28231f;text-align:center}h1{font-size:clamp(30px,8vw,54px);margin:8px 0}.badge{display:inline-block;border:2px solid;border-radius:999px;padding:7px 12px;font-weight:900}.buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:24px 0}.key{border:3px solid;border-radius:18px;padding:20px 8px;background:#eee;font-size:18px;font-weight:900}.key.on{background:#89d79a;transform:translate(2px,2px)}.state{font-size:24px;font-weight:950}.small{color:#766d62;font-weight:700}.links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:24px}.links a{color:inherit;border:2px solid;border-radius:999px;padding:9px 13px;text-decoration:none;font-weight:900}</style></head>
+<body><main class="card"><span id="net" class="badge">연결 중</span><h1>버튼 4개 테스트</h1><p class="small">GPIO 4·5·6·7 버튼을 하나씩 또는 동시에 눌러보세요.</p><div class="buttons"><div id="forward" class="key">GPIO 4<br>전진 / 위</div><div id="backward" class="key">GPIO 5<br>후진 / 아래</div><div id="left" class="key">GPIO 6<br>왼쪽</div><div id="right" class="key">GPIO 7<br>오른쪽</div></div><div id="state" class="state">입력 대기</div><nav class="links"><a href="/button-test.html">상세 테스트</a><a href="/index.html">버스 주차</a><a href="/traffic.html">장애물 피하기</a></nav></main>
+<script>const net=document.getElementById('net'),state=document.getElementById('state'),actions=['forward','backward','left','right'];const ws=new WebSocket('ws://'+location.hostname+':81');ws.onopen=()=>net.textContent='ESP32 연결됨';ws.onclose=()=>{net.textContent='연결 끊김';state.textContent='재연결 필요'};ws.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='input'){const on=actions.filter(a=>{const p=!!m.data[a];document.getElementById(a).classList.toggle('on',p);return p});state.textContent=on.length?on.join(' + ')+' 눌림':'모든 버튼 떼짐'}else if(m.type==='ping')ws.send(JSON.stringify({type:'pong'}))}catch(_){}};</script></body></html>
 )rawliteral";
 
 // ============================================================================
@@ -220,7 +220,7 @@ bool serveFile(String path) {
     return false;
   }
 
-  if (path.endsWith(".html")) {
+  if (path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css")) {
     httpServer.sendHeader("Cache-Control", "no-cache");
   } else {
     httpServer.sendHeader("Cache-Control", "public, max-age=86400");
@@ -245,7 +245,7 @@ void startHttpServer() {
   }
 
   httpServer.on("/", HTTP_GET, []() {
-#if SINGLE_BUTTON_TEST_MODE
+#if BUTTON_TEST_MODE
     if (serveFile("/button-test.html")) return;
 #else
     if (serveFile("/index.html")) return;
@@ -326,8 +326,8 @@ void setup() {
   Serial.println("🚌 ESP32 4-Button Cooperative Bus Controller Initializing");
   Serial.println("========================================================");
 
-#if SINGLE_BUTTON_TEST_MODE
-  Serial.println("[BUTTON TEST] Single-button mode enabled: GPIO 4 -> Forward/P1");
+#if BUTTON_TEST_MODE
+  Serial.println("[BUTTON TEST] 4-button test page enabled: GPIO 4, 5, 6, 7");
 #endif
 
   // Initialize button GPIOs with internal pullup

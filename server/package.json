@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test_physics.js && node test_difficulty.js && node test_traffic_input.js && node test_traffic_difficulty.js && node test_e2e.js && node test_ap_bridge.js"
+    "test": "node test_physics.js && node test_difficulty.js && node test_traffic_input.js && node test_ready_check.js && node test_traffic_difficulty.js && node test_e2e.js && node test_ap_bridge.js"
   },
   "dependencies": {
     "express": "^4.19.2",

@@ -106,10 +106,10 @@ async function runTest() {
       response.on('end', () => resolve({ statusCode: response.statusCode, body }));
     }).on('error', reject);
   });
-  if (buttonTestHtml.statusCode !== 200 || !buttonTestHtml.body.includes('GPIO 4 버튼 실시간 상태')) {
-    throw new Error(`Expected GPIO 4 test page, got HTTP ${buttonTestHtml.statusCode}`);
+  if (buttonTestHtml.statusCode !== 200 || !buttonTestHtml.body.includes('ESP32 버튼 4개 실시간 상태')) {
+    throw new Error(`Expected four-button test page, got HTTP ${buttonTestHtml.statusCode}`);
   }
-  console.log('✅ TEST PASSED: standalone GPIO 4 button test page is served');
+  console.log('✅ TEST PASSED: standalone four-button test page is served');
 
   // 1. Connect Browser Client
   const browserWs = new WebSocket(`ws://localhost:${TEST_PORT}`);
