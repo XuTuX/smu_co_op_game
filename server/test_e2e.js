@@ -111,6 +111,19 @@ async function runTest() {
   }
   console.log('✅ TEST PASSED: standalone four-button test page is served');
 
+  const jumpRopeHtml = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${TEST_PORT}/jump-rope.html`, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => resolve({ statusCode: response.statusCode, body }));
+    }).on('error', reject);
+  });
+  if (jumpRopeHtml.statusCode !== 200 || !jumpRopeHtml.body.includes('4명이 각자 뛰는')) {
+    throw new Error(`Expected team jump-rope page, got HTTP ${jumpRopeHtml.statusCode}`);
+  }
+  console.log('✅ TEST PASSED: four-player jump-rope page is served');
+
   // 1. Connect Browser Client
   const browserWs = new WebSocket(`ws://localhost:${TEST_PORT}`);
   let espStatusReceived = null;

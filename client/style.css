@@ -631,7 +631,6 @@ kbd {
   .round-button { width: 39px; height: 39px; }
   .mode-switch { flex-wrap: wrap; margin: 22px 0 18px; }
   .mode-link { flex: 1 1 45%; justify-content: center; min-height: 42px; padding: 0 10px; font-size: 12px; box-shadow: 3px 4px 0 var(--ink); }
-  .mode-link:last-child { flex-basis: 100%; }
   .game-card { border-radius: 19px; box-shadow: 7px 9px 0 var(--ink); }
   .game-meta-row { display: block; margin-bottom: 16px; }
   .difficulty-badge { width: fit-content; margin-top: 10px; padding: 6px 10px; }
