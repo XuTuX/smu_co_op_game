@@ -30,11 +30,17 @@ function makeHarness() {
   game.elapsed = 0;
   game.score = 0;
   game.perfectCount = 0;
+  game.sharedLives = 3;
   game.roundCount = 0;
   game.tempoFactor = 1;
   game.commandTargets = null;
   game.doubleRopeMode = false;
   game.modeLabel = '전원 점프';
+  game.currentMode = 'all';
+  game.modePassesRemaining = 4;
+  game.modeBag = [];
+  game.lastMode = null;
+  game.random = () => 0;
   game.combo = 0;
   game.bestCombo = 0;
   game.feverGauge = 0;
@@ -73,11 +79,7 @@ assert.deepStrictEqual(
   [1, 1, 0, 1],
   'only players above the rope-clear height should score'
 );
-assert.deepStrictEqual(
-  passGame.players.map((player) => player.lives),
-  [3, 3, 2, 3],
-  'a miss should reduce only that player\'s life'
-);
+assert.strictEqual(passGame.sharedLives, 2, 'one or more misses in a pass should remove exactly one shared life');
 assert.strictEqual(passGame.score, 3, 'team score should sum individual clears');
 assert.strictEqual(passGame.perfectCount, 0, 'mixed pass should not count as perfect');
 
@@ -113,39 +115,64 @@ feverGame.resolveRopePass();
 assert.strictEqual(feverGame.score, 20, 'fever should double all four clear points');
 
 const commandGame = makeHarness();
-commandGame.roundCount = 4;
+commandGame.currentMode = 'solo';
+commandGame.commandTargets = ['backward'];
 commandGame.applyRoundMode(false);
-assert.deepStrictEqual(Array.from(commandGame.commandTargets), ['backward'], 'round five should command red-only jump');
+assert.deepStrictEqual(Array.from(commandGame.commandTargets), ['backward'], 'solo mode should command a living red player');
 assert(commandGame.getModeHtml().includes('rope-command-color red'), 'solo instruction should color the red name without a generic all-jump message');
 assert(commandGame.getModeHtml().includes('만 점프!'), 'solo instruction should explicitly say only that color jumps');
 commandGame.players[1].height = 100;
 commandGame.resolveRopePass();
 assert.strictEqual(commandGame.players[1].clears, 1, 'red should score when red-only is commanded');
-assert.deepStrictEqual(commandGame.players.map((player) => player.lives), [3, 3, 3, 3], 'players who correctly stay grounded should keep their lives');
+assert.strictEqual(commandGame.sharedLives, 3, 'a correct color command should keep all shared lives');
 
 const sequenceGame = makeHarness();
-for (let round = 0; round < 4; round++) {
-  sequenceGame.roundCount = round;
-  sequenceGame.applyRoundMode(false);
+sequenceGame.modeBag = ['solo'];
+for (let pass = 0; pass < 3; pass++) {
+  sequenceGame.advanceRoundMode(false);
   assert.strictEqual(sequenceGame.commandTargets, null, 'the first four passes should always command everyone');
   assert.strictEqual(sequenceGame.doubleRopeMode, false, 'the first four passes should use one rope');
 }
-sequenceGame.roundCount = 5;
-sequenceGame.applyRoundMode(false);
-assert.deepStrictEqual(Array.from(sequenceGame.commandTargets), ['forward', 'backward'], 'the pair command should follow the solo command');
-assert(sequenceGame.getModeHtml().includes('yellow') && sequenceGame.getModeHtml().includes('red'), 'pair instruction should color both requested names');
-sequenceGame.roundCount = 6;
-sequenceGame.applyRoundMode(false);
-assert.strictEqual(sequenceGame.doubleRopeMode, true, 'two-rope mode should follow the two color commands');
-assert.strictEqual(sequenceGame.commandTargets, null, 'two-rope mode must always command everyone');
-sequenceGame.roundCount = 8;
-sequenceGame.applyRoundMode(false);
-assert.strictEqual(sequenceGame.tempoFactor, 0.68, 'slow tempo should follow two-rope mode');
-sequenceGame.roundCount = 10;
-sequenceGame.applyRoundMode(false);
-assert.strictEqual(sequenceGame.tempoFactor, 1.45, 'fast tempo should follow slow tempo');
-sequenceGame.roundCount = 12;
-sequenceGame.applyRoundMode(false);
-assert.deepStrictEqual(Array.from(sequenceGame.commandTargets), ['left'], 'the next cycle should rotate the solo color');
+sequenceGame.advanceRoundMode(false);
+assert.strictEqual(sequenceGame.currentMode, 'solo', 'a random event should begin after four all-player passes');
+assert.deepStrictEqual(Array.from(sequenceGame.commandTargets), ['forward'], 'random solo target should be selected from living players');
 
-console.log('✅ JUMP ROPE TEST PASSED: four all-jumps, colored solo/pair commands, all-player double ropes, slow/fast tempo, and lives work');
+const pairGame = makeHarness();
+pairGame.currentMode = 'pair';
+pairGame.applyRoundMode(false);
+assert.deepStrictEqual(Array.from(pairGame.commandTargets), ['forward', 'backward'], 'pair mode should choose two living players');
+assert(pairGame.getModeHtml().includes('yellow') && pairGame.getModeHtml().includes('red'), 'pair instruction should color both requested names');
+
+const doubleGame = makeHarness();
+doubleGame.currentMode = 'double';
+doubleGame.applyRoundMode(false);
+assert.strictEqual(doubleGame.doubleRopeMode, true, 'random double mode should render and judge two ropes');
+assert.strictEqual(doubleGame.commandTargets, null, 'two-rope mode must always command everyone');
+
+const tempoGame = makeHarness();
+tempoGame.currentMode = 'slow';
+tempoGame.applyRoundMode(false);
+assert.strictEqual(tempoGame.tempoFactor, 0.68, 'random slow mode should lower rope speed');
+tempoGame.currentMode = 'fast';
+tempoGame.applyRoundMode(false);
+assert.strictEqual(tempoGame.tempoFactor, 1.45, 'random fast mode should raise rope speed');
+
+const sharedLifeGame = makeHarness();
+sharedLifeGame.commandTargets = null;
+sharedLifeGame.players.forEach((player) => { player.height = 0; });
+sharedLifeGame.resolveRopePass();
+assert.strictEqual(sharedLifeGame.sharedLives, 2, 'four simultaneous misses must still cost only one shared life');
+sharedLifeGame.resolveRopePass();
+sharedLifeGame.resolveRopePass();
+assert.strictEqual(sharedLifeGame.sharedLives, 0, 'the game should end when the third shared life is lost');
+
+const bagGame = makeHarness();
+bagGame.random = () => 0.25;
+const randomModes = [];
+for (let i = 0; i < 5; i++) {
+  bagGame.selectRandomMode();
+  randomModes.push(bagGame.currentMode);
+}
+assert.deepStrictEqual(randomModes.sort(), ['double', 'fast', 'pair', 'slow', 'solo'], 'one shuffled bag should contain every random event exactly once');
+
+console.log('✅ JUMP ROPE TEST PASSED: random event bag, colored commands, double ropes, tempo shifts, and three shared lives work');

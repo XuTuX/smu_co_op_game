@@ -53,7 +53,7 @@
           <span class="stat-note">POINTS</span>
         </div>
         <div class="stat-copy">
-          <h2>스테이지마다 100초<br><span>두 자리를 주차!</span></h2>
+          <h2>스테이지마다 60초<br><span>두 자리를 주차!</span></h2>
           <p>한 자리 +100점 · 두 자리 완료 시 남은 시간 보너스</p>
         </div>
         <div class="stat-block stat-time">
@@ -122,7 +122,7 @@
           <div class="modal-card">
             <div class="modal-badge">PARKING MODE</div>
             <h2 class="modal-title">4명이 함께<br><span>버스 주차</span></h2>
-            <p class="modal-subtitle">각자 맡은 버튼을 한 번씩 눌러 준비하세요. 4명이 모두 준비되면 3초 뒤 자동으로 시작합니다.</p>
+            <p class="modal-subtitle">각자 맡은 버튼을 눌러 준비하세요. 준비 완료 후 같은 버튼을 다시 누르면 취소됩니다. 4명이 모두 준비되면 자동으로 시작합니다.</p>
 
             <div class="role-grid">
               <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>전진</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
@@ -143,6 +143,7 @@
               <div class="summary-box"><span class="summary-label">FINAL SCORE</span><strong id="final-score">0</strong></div>
               <div class="summary-box"><span class="summary-label">PARKED BUSES</span><strong id="final-park-count">0</strong></div>
             </div>
+            <p class="modal-footnote">ESP32 버튼 4개 중 아무 버튼이나 눌러 준비 화면으로 돌아가세요.</p>
             <button id="restart-btn" class="btn btn-primary btn-large" type="button">다시 준비하기 <span aria-hidden="true">↻</span></button>
           </div>
         </div>

@@ -41,8 +41,8 @@ class BeatJumpGame {
     this.bindUI();
     this.inputManager.onChange((inputs) => {
       this.updateInputUI(inputs);
-      if (this.state === 'READY') this.handleReadyInput(inputs);
-      else if (this.state === 'PLAYING') this.handleJumpInput(inputs);
+      this.handleReadyInput(inputs);
+      if (this.state === 'PLAYING') this.handleJumpInput(inputs);
       else this.previousPlayInputs = { ...inputs };
     });
     this.network.connect();
@@ -91,17 +91,26 @@ class BeatJumpGame {
   }
 
   handleReadyInput(inputs) {
-    let changed = false;
-    for (const action of this.actions) {
-      if (inputs[action] && !this.previousReadyInputs[action] && !this.readyPlayers[action]) {
-        this.readyPlayers[action] = true;
-        changed = true;
-      }
+    const risingActions = this.actions.filter((action) => inputs[action] && !this.previousReadyInputs[action]);
+    if (this.state === 'GAMEOVER') {
+      this.previousReadyInputs = { ...inputs };
+      if (risingActions.length) this.beginReadyCheck();
+      return;
     }
+    if (this.state !== 'READY' && this.state !== 'READY_COMPLETE') {
+      this.previousReadyInputs = { ...inputs };
+      return;
+    }
+    for (const action of risingActions) this.readyPlayers[action] = !this.readyPlayers[action];
     this.previousReadyInputs = { ...inputs };
-    if (!changed) return;
+    if (!risingActions.length) return;
+    const allReady = this.actions.every((action) => this.readyPlayers[action]);
+    if (!allReady && this.state === 'READY_COMPLETE') {
+      window.clearTimeout(this.readyStartTimer);
+      this.state = 'READY';
+    }
     this.updateReadyUI();
-    if (this.actions.every((action) => this.readyPlayers[action])) {
+    if (allReady && this.state !== 'READY_COMPLETE') {
       this.state = 'READY_COMPLETE';
       this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
     }
@@ -113,7 +122,7 @@ class BeatJumpGame {
       const ready = Boolean(this.readyPlayers[card.dataset.readyAction]);
       card.classList.toggle('is-ready', ready);
       const status = card.querySelector('.ready-state');
-      if (status) status.textContent = ready ? '준비 완료 ✓' : '대기 중';
+      if (status) status.textContent = ready ? '준비 완료 ✓ · 다시 누르면 취소' : '대기 중';
     });
     const progress = document.getElementById('beat-ready-progress');
     progress.textContent = count === 4 ? '모두 준비 완료!' : `준비 ${count} / 4`;
@@ -209,27 +218,48 @@ class BeatJumpGame {
     return this.waveNumber % 2 === 0 ? 'cone' : 'barrel';
   }
 
-  beginWarning() {
-    const type = this.chooseObstacleType();
-    const direction = this.nextDirection;
+  chooseWavePlan() {
+    const count = this.waveNumber < 3 ? 1 : (this.waveNumber < 7 ? 2 : 3);
+    const firstDirection = this.nextDirection;
     this.nextDirection *= -1;
-    this.warning = { type, direction, elapsed: 0, duration: 1.15 };
-    this.showDirection(direction);
+    let directions = Array(count).fill(firstDirection);
+    let label = firstDirection > 0 ? `왼쪽 ${count}개` : `오른쪽 ${count}개`;
+
+    if (count > 1 && this.waveNumber % 3 === 2) {
+      directions = Array.from({ length: count }, (_, index) => index % 2 === 0 ? firstDirection : -firstDirection);
+      label = count === 2 ? '양쪽에서 순서대로' : '양쪽 교차 · 순차 3개';
+    } else if (count === 3 && this.waveNumber % 3 === 1) {
+      directions = [firstDirection, firstDirection, -firstDirection];
+      label = firstDirection > 0 ? '왼쪽 둘 · 오른쪽 하나' : '오른쪽 둘 · 왼쪽 하나';
+    }
+
+    return { count, directions, label, type: this.chooseObstacleType() };
+  }
+
+  beginWarning() {
+    const plan = this.chooseWavePlan();
+    this.warning = { plan, elapsed: 0, duration: 1.25 };
+    this.showDirection(plan);
     this.soundEngine.playBeep(430, 0.12, 'square');
   }
 
-  showDirection(direction) {
+  showDirection(plan) {
     const panel = document.getElementById('beat-direction');
     const text = document.getElementById('beat-direction-text');
     const arrow = document.getElementById('beat-direction-arrow');
     panel.classList.remove('hidden');
-    if (direction > 0) {
+    const mixed = new Set(plan.directions).size > 1;
+    if (mixed) {
       panel.dataset.direction = 'left';
-      text.textContent = '왼쪽에서 온다';
+      text.textContent = plan.label;
+      arrow.textContent = '→ ←';
+    } else if (plan.directions[0] > 0) {
+      panel.dataset.direction = 'left';
+      text.textContent = plan.label;
       arrow.textContent = '→';
     } else {
       panel.dataset.direction = 'right';
-      text.textContent = '오른쪽에서 온다';
+      text.textContent = plan.label;
       arrow.textContent = '←';
     }
   }
@@ -253,12 +283,30 @@ class BeatJumpGame {
   }
 
   spawnWave() {
-    const { type, direction } = this.warning;
+    const { plan } = this.warning;
     const id = ++this.waveNumber;
     const activeCount = this.players.filter((player) => !player.eliminated).length;
-    this.obstacles.push(this.makeObstacle(type, direction, 0, id));
+    let launchDelay = 0;
+    let previousDirection = null;
+    plan.directions.forEach((direction, index) => {
+      const obstacle = this.makeObstacle(plan.type, direction, 0, id);
+      if (index > 0) {
+        const landingRecovery = 1.05;
+        const teamTraversal = Math.abs(this.playerXs[this.playerXs.length - 1] - this.playerXs[0]) / obstacle.speed;
+        launchDelay += direction === previousDirection
+          ? landingRecovery
+          : teamTraversal + landingRecovery;
+      }
+      obstacle.launchDelay = launchDelay;
+      obstacle.x += direction > 0
+        ? -launchDelay * obstacle.speed
+        : launchDelay * obstacle.speed;
+      this.obstacles.push(obstacle);
+      previousDirection = direction;
+    });
     this.wave = {
-      id, type, direction, perfect: true, successes: 0,
+      id, type: plan.type, direction: plan.directions.length === 1 ? plan.directions[0] : 0,
+      planLabel: plan.label, obstacleCount: plan.count, perfect: true, successes: 0,
       expected: this.obstacles.filter((obstacle) => obstacle.waveId === id).length * activeCount
     };
     this.warning = null;
@@ -278,11 +326,19 @@ class BeatJumpGame {
         this.judgePlayer(player, obstacle);
       }
     }
-    this.obstacles = this.obstacles.filter((obstacle) => obstacle.x > -320 && obstacle.x < 1920);
+    // A later obstacle can intentionally wait far outside the entrance so the
+    // previous jump has time to land. Only remove it after it exits in its own
+    // travel direction; never delete it while it is still waiting to enter.
+    this.obstacles = this.obstacles.filter((obstacle) => this.shouldKeepObstacle(obstacle));
     if (this.wave && !this.obstacles.some((obstacle) => obstacle.waveId === this.wave.id)) this.finishWave();
   }
 
+  shouldKeepObstacle(obstacle) {
+    return obstacle.direction > 0 ? obstacle.x < 1920 : obstacle.x > -320;
+  }
+
   judgePlayer(player, obstacle) {
+    if (this.sharedLives <= 0) return;
     const requiredHeight = Math.min(78, obstacle.height * 0.72);
     const onBeatJump = this.elapsed - player.lastJumpAt <= 0.17;
     if (player.height >= requiredHeight || onBeatJump) {
@@ -293,12 +349,11 @@ class BeatJumpGame {
       this.addFeedback(player, 'CLEAR +1', '#a7f3d0');
       this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 8);
     } else {
-      this.sharedLives--;
+      this.sharedLives = Math.max(0, this.sharedLives - 1);
       player.misses++;
       player.stunned = 0.65;
       player.flash = 0.75;
       this.wave.perfect = false;
-      this.addFeedback(player, 'MISS!', '#fb7185');
       this.spawnBurst(player.x, this.groundY - 35, '#fb7185', 16);
       this.soundEngine.playCrash();
       this.shake = 13;
@@ -389,7 +444,7 @@ class BeatJumpGame {
     document.getElementById('beat-gameover-message').textContent = this.waveNumber >= 12 ? '양쪽 웨이브까지 돌파!' : this.waveNumber >= 6 ? '여러 개 타이밍도 좋아요!' : `${this.waveNumber}웨이브 돌파 · 다시 기록 도전!`;
     document.getElementById('beat-final-score').textContent = this.score;
     document.getElementById('beat-best-combo').textContent = this.waveNumber;
-    document.getElementById('beat-player-results').innerHTML = this.players.map((player, index) => `<div class="beat-result-card p${index + 1}"><span>${player.label} · ${player.key}</span><strong>${player.clears}회</strong><span>실수 ${player.misses}</span></div>`).join('');
+    document.getElementById('beat-player-results').innerHTML = this.players.map((player, index) => `<div class="beat-result-card p${index + 1}"><span>${player.label} · ${player.key}</span><strong>${player.clears}회</strong></div>`).join('');
     document.getElementById('beat-gameover-modal').classList.remove('hidden');
   }
 
@@ -411,7 +466,8 @@ class BeatJumpGame {
 
   drawJumpOrder() {
     const ctx = this.ctx;
-    const order = this.warning.direction < 0 ? [...this.players].reverse() : this.players;
+    const firstDirection = this.warning.plan.directions[0];
+    const order = firstDirection < 0 ? [...this.players].reverse() : this.players;
     ctx.textAlign = 'center';
     order.forEach((player, index) => {
       ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#15202b'; ctx.lineWidth = 4;
@@ -424,18 +480,62 @@ class BeatJumpGame {
     const ctx = this.ctx;
     const y = this.groundY - player.height;
     const pulse = player.flash > 0 && Math.floor(player.flash * 16) % 2 === 0;
-    ctx.save(); ctx.translate(player.x, y); ctx.globalAlpha = player.eliminated ? .3 : 1;
-    ctx.fillStyle = 'rgba(5,20,28,.35)'; ctx.beginPath(); ctx.ellipse(0, player.height, 50 - Math.min(25, player.height * .13), 11, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = pulse ? '#fff' : '#15202b'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-    const lift = player.height > 12 ? 14 : 0;
-    ctx.beginPath(); ctx.moveTo(-19,-54); ctx.lineTo(-26,-8-lift); ctx.lineTo(-43,-lift); ctx.moveTo(19,-54); ctx.lineTo(26,-8-lift); ctx.lineTo(43,-lift); ctx.stroke();
-    ctx.fillStyle = player.color; ctx.beginPath(); ctx.roundRect(-48,-146,96,98,28); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-42,-126); ctx.lineTo(-70,-84-lift); ctx.moveTo(42,-126); ctx.lineTo(70,-84-lift); ctx.stroke();
-    ctx.fillStyle = '#f5cfa8'; ctx.beginPath(); ctx.arc(0,-181,40,0,Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#15202b'; ctx.beginPath(); ctx.arc(-13,-185,4,0,Math.PI*2); ctx.arc(13,-185,4,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(0,-170,11,.1,Math.PI-.1); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-29,-128,58,41,12); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = player.dark; ctx.font = '950 22px system-ui'; ctx.textAlign = 'center'; ctx.fillText(player.label,0,-100); ctx.restore();
+    const squash = player.height === 0 ? 1 - player.squash * 0.13 : 1.04;
+    ctx.save();
+    ctx.translate(player.x, y);
+    ctx.fillStyle = 'rgba(5,20,28,.35)';
+    ctx.beginPath(); ctx.ellipse(0, player.height, 54 - Math.min(27, player.height * .13), 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.scale(1 + (1 - squash) * .7, squash);
+    ctx.strokeStyle = pulse ? '#fff' : '#15202b';
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Four non-human mascot silhouettes: antenna, ears, horns, and leaf.
+    ctx.fillStyle = player.color;
+    if (index === 0) {
+      ctx.beginPath(); ctx.moveTo(0,-151); ctx.lineTo(0,-181); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,-190,11,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    } else if (index === 1) {
+      ctx.beginPath(); ctx.moveTo(-42,-139); ctx.lineTo(-26,-181); ctx.lineTo(-7,-145); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(42,-139); ctx.lineTo(26,-181); ctx.lineTo(7,-145); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (index === 2) {
+      ctx.beginPath(); ctx.moveTo(-35,-143); ctx.quadraticCurveTo(-59,-183,-20,-171); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(35,-143); ctx.quadraticCurveTo(59,-183,20,-171); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(4,-151); ctx.quadraticCurveTo(42,-190,48,-153); ctx.quadraticCurveTo(27,-145,4,-151); ctx.fill(); ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(-48,-22);
+    ctx.bezierCurveTo(-68,-65,-62,-132,-32,-151);
+    ctx.bezierCurveTo(-12,-165,12,-165,32,-151);
+    ctx.bezierCurveTo(62,-132,68,-65,48,-22);
+    ctx.quadraticCurveTo(28,5,0,-2);
+    ctx.quadraticCurveTo(-28,5,-48,-22);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Side nubs and springy feet keep the creature readable while jumping.
+    const lift = player.height > 12 ? 12 : 0;
+    ctx.beginPath(); ctx.ellipse(-59,-70-lift,18,12,-.65,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(59,-70-lift,18,12,.65,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(-25,-2-lift,24,12,-.12,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(25,-2-lift,24,12,.12,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(-18,-105,13,17,0,0,Math.PI*2); ctx.ellipse(18,-105,13,17,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#15202b';
+    ctx.beginPath(); ctx.arc(-16,-102,5,0,Math.PI*2); ctx.arc(16,-102,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-79,13,.12,Math.PI-.12); ctx.stroke();
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.roundRect(-28,-63,56,34,12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = player.dark;
+    ctx.font = '950 20px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(player.label,0,-39);
+    ctx.restore();
     ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '900 19px system-ui'; ctx.fillText(`${player.key} · ${player.clears}회`,player.x,730);
     ctx.fillStyle = '#a5f3fc'; ctx.font = '900 18px system-ui'; ctx.fillText(`통과 ${player.clears}`,player.x,760);
     this.canvas.dataset[`p${index + 1}Height`] = player.height.toFixed(1);
@@ -481,8 +581,14 @@ class BeatJumpGame {
     this.canvas.dataset.score = String(this.score);
     this.canvas.dataset.obstacles = String(this.obstacles.length);
     this.canvas.dataset.warningBeat = '0';
-    this.canvas.dataset.direction = this.warning ? String(this.warning.direction) : (this.wave ? String(this.wave.direction) : '0');
-    this.canvas.dataset.waveType = this.warning ? this.warning.type : (this.wave ? this.wave.type : 'none');
+    this.canvas.dataset.direction = this.warning
+      ? this.warning.plan.directions.join(',')
+      : (this.wave ? String(this.wave.direction) : '0');
+    this.canvas.dataset.waveType = this.warning ? this.warning.plan.type : (this.wave ? this.wave.type : 'none');
+    this.canvas.dataset.waveObstacleCount = this.warning
+      ? String(this.warning.plan.count)
+      : (this.wave ? String(this.wave.obstacleCount) : '0');
+    this.canvas.dataset.wavePlan = this.warning ? this.warning.plan.label : (this.wave ? this.wave.planLabel : 'none');
     this.canvas.dataset.rhythmPattern = 'none';
     this.canvas.dataset.rhythmNotation = 'none';
     this.canvas.dataset.waveNumber = String(this.waveNumber);

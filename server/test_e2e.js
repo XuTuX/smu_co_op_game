@@ -132,7 +132,7 @@ async function runTest() {
       response.on('end', () => resolve({ statusCode: response.statusCode, body }));
     }).on('error', reject);
   });
-  if (beatJumpHtml.statusCode !== 200 || !beatJumpHtml.body.includes('방향 표시')) {
+  if (beatJumpHtml.statusCode !== 200 || !beatJumpHtml.body.includes('장애물 개수와 좌우 진입 순서')) {
     throw new Error(`Expected beat-jump page, got HTTP ${beatJumpHtml.statusCode}`);
   }
   console.log('✅ TEST PASSED: left/right beat-jump page is served');

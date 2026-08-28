@@ -134,23 +134,28 @@ class ObstacleDodgeGame {
   }
 
   handleReadyInput(inputs) {
-    if (this.state !== 'READY') {
+    const risingActions = this.readyActions.filter((action) => inputs[action] && !this.previousReadyInputs[action]);
+    if (this.state === 'GAMEOVER') {
+      this.previousReadyInputs = { ...inputs };
+      if (risingActions.length) this.beginReadyCheck();
+      return;
+    }
+    if (this.state !== 'READY' && this.state !== 'READY_COMPLETE') {
       this.previousReadyInputs = { ...inputs };
       return;
     }
 
-    let changed = false;
-    for (const action of this.readyActions) {
-      if (inputs[action] && !this.previousReadyInputs[action] && !this.readyPlayers[action]) {
-        this.readyPlayers[action] = true;
-        changed = true;
-      }
-    }
+    for (const action of risingActions) this.readyPlayers[action] = !this.readyPlayers[action];
     this.previousReadyInputs = { ...inputs };
-    if (!changed) return;
+    if (!risingActions.length) return;
 
+    const allReady = this.readyActions.every((action) => this.readyPlayers[action]);
+    if (!allReady && this.state === 'READY_COMPLETE') {
+      window.clearTimeout(this.readyStartTimer);
+      this.state = 'READY';
+    }
     this.updateReadyUI();
-    if (this.readyActions.every((action) => this.readyPlayers[action])) {
+    if (allReady && this.state !== 'READY_COMPLETE') {
       this.state = 'READY_COMPLETE';
       this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
     }
@@ -162,7 +167,7 @@ class ObstacleDodgeGame {
       const isReady = Boolean(this.readyPlayers[card.dataset.readyAction]);
       card.classList.toggle('is-ready', isReady);
       const status = card.querySelector('.ready-state');
-      if (status) status.textContent = isReady ? '준비 완료 ✓' : '대기 중';
+      if (status) status.textContent = isReady ? '준비 완료 ✓ · 다시 누르면 취소' : '대기 중';
     });
     const progress = document.getElementById('traffic-ready-progress');
     if (progress) {

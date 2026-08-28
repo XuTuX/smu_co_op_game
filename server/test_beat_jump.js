@@ -11,8 +11,12 @@ const context = vm.createContext({
   window: { addEventListener() {}, clearTimeout() {}, setTimeout() { return 1; } }
 });
 const source = fs.readFileSync(path.join(__dirname, '..', 'client/js/beat-jump.js'), 'utf8');
+const pageSource = fs.readFileSync(path.join(__dirname, '..', 'client/beat-jump.html'), 'utf8');
 vm.runInContext(`${source}\nwindow.TestBeatJumpGame = BeatJumpGame;`, context, { filename: 'beat-jump.js' });
 const GameClass = context.window.TestBeatJumpGame;
+
+assert(!source.includes("'MISS!'"), 'the game should not show a miss callout');
+assert(!pageSource.includes('실수') && !pageSource.includes('ONE MISS'), 'the page should not show miss wording');
 
 function makeHarness() {
   const game = Object.create(GameClass.prototype);
@@ -78,17 +82,17 @@ assert.deepStrictEqual(judgeGame.players.map((player) => player.lives), [3, 3, 3
 assert.strictEqual(judgeGame.wave.perfect, false, 'any individual miss should break the perfect wave');
 
 const warningGame = makeHarness();
-warningGame.warning = { type: 'cone', direction: 1, elapsed: 0, duration: 1.15 };
+warningGame.warning = { plan: { count: 1, directions: [1], label: '왼쪽 1개', type: 'cone' }, elapsed: 0, duration: 1.25 };
 let spawned = 0;
 warningGame.spawnWave = () => { spawned++; };
 warningGame.updateWarning(1.0);
 assert.strictEqual(spawned, 0, 'direction warning should remain visible briefly before launch');
-warningGame.updateWarning(0.16);
+warningGame.updateWarning(0.26);
 assert.strictEqual(spawned, 1, 'one obstacle should launch after the simple warning');
 
 const waveGame = makeHarness();
 waveGame.obstacles = [];
-waveGame.warning = { type: 'cone', direction: 1 };
+waveGame.warning = { plan: { count: 1, directions: [1], label: '왼쪽 1개', type: 'cone' } };
 waveGame.spawnWave();
 assert.strictEqual(waveGame.obstacles.length, 1, 'each wave should contain exactly one clean obstacle');
 assert.strictEqual(waveGame.obstacles[0].direction, 1, 'the obstacle should follow the announced direction');
@@ -97,4 +101,70 @@ assert.strictEqual(waveGame.chooseObstacleType(), 'cone', 'obstacle types should
 waveGame.waveNumber = 8;
 assert.strictEqual(waveGame.chooseObstacleType(), 'cart', 'later waves may use one faster cart');
 
-console.log('✅ BEAT JUMP TEST PASSED: simple direction warning, one obstacle, shared lives, and independent jumps work');
+const progressionGame = makeHarness();
+progressionGame.waveNumber = 0;
+let plan = progressionGame.chooseWavePlan();
+assert.strictEqual(plan.count, 1, 'the opening should use one obstacle');
+progressionGame.waveNumber = 3;
+plan = progressionGame.chooseWavePlan();
+assert.strictEqual(plan.count, 2, 'the middle section should introduce two obstacles');
+progressionGame.waveNumber = 7;
+plan = progressionGame.chooseWavePlan();
+assert.strictEqual(plan.count, 3, 'the later section should introduce three obstacles');
+
+const mixedGame = makeHarness();
+mixedGame.waveNumber = 5;
+plan = mixedGame.chooseWavePlan();
+assert.strictEqual(plan.count, 2, 'mixed-side variation should retain the correct obstacle count');
+assert.deepStrictEqual(Array.from(plan.directions), [1, -1], 'two-obstacle variation should alternate left and right entry');
+mixedGame.obstacles = [];
+mixedGame.warning = { plan };
+mixedGame.spawnWave();
+assert.strictEqual(mixedGame.obstacles.length, 2, 'two-obstacle plan should spawn two separate obstacles');
+assert.deepStrictEqual(mixedGame.obstacles.map((obstacle) => obstacle.direction), [1, -1], 'spawn order should preserve the announced side sequence');
+const delayedRightObstacle = mixedGame.obstacles[1];
+assert(delayedRightObstacle.x > 1920, 'the second obstacle should wait outside the right entrance');
+assert.strictEqual(
+  mixedGame.shouldKeepObstacle(delayedRightObstacle),
+  true,
+  'a delayed obstacle must not be deleted before it enters the screen'
+);
+assert.strictEqual(
+  mixedGame.shouldKeepObstacle({ direction: 1, x: 1920 }),
+  false,
+  'a left-entering obstacle should be removed after it exits on the right'
+);
+assert.strictEqual(
+  mixedGame.shouldKeepObstacle({ direction: -1, x: -320 }),
+  false,
+  'a right-entering obstacle should be removed after it exits on the left'
+);
+for (const playerX of mixedGame.playerXs) {
+  const arrivalTimes = mixedGame.obstacles.map((obstacle) => obstacle.direction > 0
+    ? (playerX - obstacle.x) / obstacle.speed
+    : (obstacle.x - playerX) / obstacle.speed
+  ).sort((a, b) => a - b);
+  assert(
+    arrivalTimes[1] - arrivalTimes[0] >= 1,
+    `opposite-side obstacles must leave landing time at player x=${playerX}`
+  );
+}
+
+const tripleMixedGame = makeHarness();
+tripleMixedGame.waveNumber = 8;
+plan = tripleMixedGame.chooseWavePlan();
+assert.deepStrictEqual(Array.from(plan.directions), [1, -1, 1], 'later mixed wave should alternate three entry sides');
+tripleMixedGame.obstacles = [];
+tripleMixedGame.warning = { plan };
+tripleMixedGame.spawnWave();
+for (const playerX of tripleMixedGame.playerXs) {
+  const arrivalTimes = tripleMixedGame.obstacles.map((obstacle) => obstacle.direction > 0
+    ? (playerX - obstacle.x) / obstacle.speed
+    : (obstacle.x - playerX) / obstacle.speed
+  ).sort((a, b) => a - b);
+  for (let index = 1; index < arrivalTimes.length; index++) {
+    assert(arrivalTimes[index] - arrivalTimes[index - 1] >= 1, 'three-way cross wave must remain physically jumpable');
+  }
+}
+
+console.log('✅ BEAT JUMP TEST PASSED: one-to-three obstacle progression, changing side order, shared lives, and independent jumps work');

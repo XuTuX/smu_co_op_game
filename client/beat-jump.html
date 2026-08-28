@@ -33,8 +33,8 @@
       <div class="game-meta-row"><div class="game-card-label"><span aria-hidden="true">➜</span> BEAT JUMP RUN</div></div>
       <section class="stats-row beat-stats" aria-label="타이밍 점프 게임 상태">
         <div class="stat-block beat-score-card"><span class="stat-label">TEAM SCORE</span><strong id="beat-score">0</strong><span class="stat-note">POINTS</span></div>
-        <div class="stat-copy"><h2>방향을 확인하고<br><span>깔끔하게 점프!</span></h2><p>왼쪽 또는 오른쪽에서 장애물 하나가 들어옵니다</p></div>
-        <div class="stat-block beat-time-card"><span class="stat-label">TEAM LIFE</span><div><strong id="beat-time">♥♥♥</strong></div><span class="stat-note">ONE MISS · ONE LIFE</span></div>
+        <div class="stat-copy"><h2>방향과 개수를 보고<br><span>깔끔하게 점프!</span></h2><p>초반 1개 · 중반 2개 · 후반 3개와 교차 진입</p></div>
+        <div class="stat-block beat-time-card"><span class="stat-label">TEAM LIFE</span><div><strong id="beat-time">♥♥♥</strong></div></div>
       </section>
 
       <section class="canvas-frame beat-frame" aria-label="좌우에서 오는 장애물을 네 캐릭터가 각자 피하는 타이밍 점프 게임 화면">
@@ -55,7 +55,7 @@
           <div class="modal-card beat-modal">
             <div class="modal-badge beat-badge">BEAT JUMP</div>
             <h2 class="modal-title">좌우에서 달려오는<br><span>4인 타이밍 점프</span></h2>
-            <p class="modal-subtitle">왼쪽 또는 오른쪽 방향 표시를 확인하세요. 장애물이 자기 캐릭터 앞에 왔을 때 각자 버튼으로 점프합니다. 팀 목숨 3개가 모두 사라지면 종료됩니다.</p>
+            <p class="modal-subtitle">버튼을 눌러 준비하고 같은 버튼을 다시 누르면 취소됩니다. 장애물 개수와 좌우 진입 순서를 확인해 점프하세요. 팀 목숨 3개가 사라지면 종료됩니다.</p>
             <div class="role-grid">
               <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
               <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
@@ -72,6 +72,7 @@
             <h2 id="beat-gameover-message" class="modal-title">타이밍이 좋아요!</h2>
             <div class="score-summary beat-summary"><div class="summary-box"><span class="summary-label">TEAM SCORE</span><strong id="beat-final-score">0</strong></div><div class="summary-box"><span class="summary-label">WAVES</span><strong id="beat-best-combo">0</strong></div></div>
             <div id="beat-player-results" class="beat-player-results" aria-label="플레이어별 결과"></div>
+            <p class="modal-footnote">ESP32 버튼 4개 중 아무 버튼이나 눌러 준비 화면으로 돌아가세요.</p>
             <button id="beat-restart-btn" class="btn btn-primary btn-large beat-restart" type="button">다시 준비하기 <span aria-hidden="true">↻</span></button>
           </div>
         </div>

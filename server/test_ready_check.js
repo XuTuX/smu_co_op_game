@@ -49,6 +49,8 @@ function createReadyHarness(GameClass) {
   game.updateReadyUI = () => {};
   game.countdownStarted = false;
   game.startCountdown = () => { game.countdownStarted = true; };
+  game.returnedToReady = false;
+  game.beginReadyCheck = () => { game.returnedToReady = true; game.state = 'READY'; };
 
   const input = new context.window.TestInputManager();
   input.onChange((state) => game.handleReadyInput(state));
@@ -94,13 +96,47 @@ function verifySimultaneousReady(GameClass, label) {
   assert.strictEqual(queuedTimers.length, 1, `${label}: simultaneous input must schedule once`);
 }
 
+function verifyReadyToggle(GameClass, label) {
+  queuedTimers.length = 0;
+  const { game, input } = createReadyHarness(GameClass);
+  input.setEsp32Input({ ...game.createReadyState(), forward: true });
+  assert.strictEqual(game.readyPlayers.forward, true, `${label}: first press must ready the player`);
+  releaseAll(input);
+  input.setEsp32Input({ ...game.createReadyState(), forward: true });
+  assert.strictEqual(game.readyPlayers.forward, false, `${label}: second press must cancel readiness`);
+
+  releaseAll(input);
+  input.setEsp32Input({ forward: true, backward: true, left: true, right: true });
+  assert.strictEqual(game.state, 'READY_COMPLETE', `${label}: all ready must enter the pending-start state`);
+  releaseAll(input);
+  input.setEsp32Input({ ...game.createReadyState(), right: true });
+  assert.strictEqual(game.readyPlayers.right, false, `${label}: pressing again while all-ready must cancel that player`);
+  assert.strictEqual(game.state, 'READY', `${label}: cancellation during pending start must return to ready state`);
+}
+
+function verifyGameOverRestart(GameClass, label) {
+  const { game, input } = createReadyHarness(GameClass);
+  game.state = 'GAMEOVER';
+  input.setEsp32Input({ ...game.createReadyState(), left: true });
+  assert.strictEqual(game.returnedToReady, true, `${label}: any ESP32 button must return game over to ready`);
+  assert.strictEqual(game.state, 'READY', `${label}: restart input must enter ready state`);
+}
+
 verifySequentialReady(context.window.TestParkingGame, 'Parking');
 verifySimultaneousReady(context.window.TestParkingGame, 'Parking');
+verifyReadyToggle(context.window.TestParkingGame, 'Parking');
+verifyGameOverRestart(context.window.TestParkingGame, 'Parking');
 verifySequentialReady(context.window.TestTrafficGame, 'Traffic');
 verifySimultaneousReady(context.window.TestTrafficGame, 'Traffic');
+verifyReadyToggle(context.window.TestTrafficGame, 'Traffic');
+verifyGameOverRestart(context.window.TestTrafficGame, 'Traffic');
 verifySequentialReady(context.window.TestJumpRopeGame, 'Jump rope');
 verifySimultaneousReady(context.window.TestJumpRopeGame, 'Jump rope');
+verifyReadyToggle(context.window.TestJumpRopeGame, 'Jump rope');
+verifyGameOverRestart(context.window.TestJumpRopeGame, 'Jump rope');
 verifySequentialReady(context.window.TestBeatJumpGame, 'Beat jump');
 verifySimultaneousReady(context.window.TestBeatJumpGame, 'Beat jump');
+verifyReadyToggle(context.window.TestBeatJumpGame, 'Beat jump');
+verifyGameOverRestart(context.window.TestBeatJumpGame, 'Beat jump');
 
-console.log('✅ READY CHECK TEST PASSED: all four games accept sequential and simultaneous ESP32 button readiness');
+console.log('✅ READY CHECK TEST PASSED: all four games support ESP32 ready, cancel, all-ready cancellation, and game-over restart');
