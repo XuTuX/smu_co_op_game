@@ -10,6 +10,7 @@ class NetworkClient {
     this.reconnectTimeout = null;
     this.isServerConnected = false;
     this.isEsp32Connected = false;
+    this.isDirectEsp32 = window.location.hostname === '192.168.4.1';
   }
 
   connect() {
@@ -18,7 +19,9 @@ class NetworkClient {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host || 'localhost:3000';
+    const host = this.isDirectEsp32
+      ? `${window.location.hostname}:81`
+      : (window.location.host || 'localhost:3000');
     const wsUrl = `${protocol}//${host}`;
 
     console.log(`[Network] Connecting to WebSocket server at ${wsUrl}...`);
@@ -29,6 +32,12 @@ class NetworkClient {
       this.socket.onopen = () => {
         console.log('[Network] Connected to Node.js WebSocket Server');
         this.isServerConnected = true;
+
+        // Pages served by the ESP32 are already connected directly to the hardware.
+        if (this.isDirectEsp32) {
+          this.isEsp32Connected = true;
+          if (this.onEsp32StatusChange) this.onEsp32StatusChange(true);
+        }
 
         // Register as browser client
         this.send({
@@ -49,6 +58,8 @@ class NetworkClient {
           } else if (message.type === 'input') {
             // ESP32 input payload relayed through server
             this.inputManager.setEsp32Input(message.data);
+          } else if (message.type === 'ping' && this.isDirectEsp32) {
+            this.send({ type: 'pong', timestamp: Date.now() });
           }
         } catch (err) {
           console.warn('[Network] Received non-JSON message:', event.data);

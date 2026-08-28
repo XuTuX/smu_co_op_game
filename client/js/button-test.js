@@ -75,7 +75,9 @@ class GpioButtonTest {
     this.panel.classList.add('waiting');
     this.stateKicker.textContent = 'WEBSOCKET · WAITING';
     this.stateText.textContent = '연결 대기 중';
-    this.stateHelp.textContent = 'ESP32 전원, hihi Wi-Fi, Node.js 서버를 확인하세요.';
+    this.stateHelp.textContent = this.network && this.network.isDirectEsp32
+      ? 'ESP32 전원과 hihi Wi-Fi를 확인한 뒤 페이지를 새로고침하세요.'
+      : 'ESP32 전원, hihi Wi-Fi, Node.js 개발 서버를 확인하세요.';
   }
 
   addLog(pressed, time) {

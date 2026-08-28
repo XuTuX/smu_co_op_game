@@ -20,6 +20,9 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WebServer.h>
+#include <DNSServer.h>
+#include <LittleFS.h>
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 
@@ -93,9 +96,19 @@ Button buttons[] = {
 const size_t NUM_BUTTONS = sizeof(buttons) / sizeof(buttons[0]);
 
 WebSocketsServer webSocket(WEBSOCKET_PORT);
+WebServer httpServer(80);
+DNSServer dnsServer;
 uint8_t wsClientCount = 0;
+bool fileSystemReady = false;
 unsigned long lastHeartbeatTime = 0;
 unsigned long lastWifiCheckTime = 0;
+
+const char FALLBACK_TEST_PAGE[] PROGMEM = R"rawliteral(
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP32 GPIO 4 Test</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff5db;color:#28231f;font-family:system-ui,sans-serif}.card{width:min(92%,620px);border:3px solid;border-radius:24px;padding:28px;background:#fffdf7;box-shadow:9px 10px 0 #28231f;text-align:center}h1{font-size:clamp(30px,8vw,54px);margin:0 0 8px}.badge{display:inline-block;border:2px solid;border-radius:999px;padding:7px 12px;font-weight:900}.button{margin:26px auto;width:180px;height:180px;border:3px solid;border-radius:50%;display:grid;place-items:center;background:#ef604c;box-shadow:0 18px 0 #a8362b,0 21px 0 3px #28231f;font-size:24px;font-weight:900;transition:.12s}.pressed .button{background:#89d79a;transform:translateY(15px);box-shadow:0 3px 0 #559d64,0 6px 0 3px #28231f}.state{font-size:34px;font-weight:950}.small{color:#766d62;font-weight:700}.links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:24px}.links a{color:inherit;border:2px solid;border-radius:999px;padding:9px 13px;text-decoration:none;font-weight:900}</style></head>
+<body><main id="card" class="card"><span id="net" class="badge">연결 중</span><h1>GPIO 4 버튼 테스트</h1><p class="small">GPIO 4와 GND 사이의 버튼을 눌러보세요.</p><div class="button">GPIO 4</div><div id="state" class="state">입력 대기</div><p id="raw" class="small">WebSocket 연결을 기다리는 중입니다.</p><nav class="links"><a href="/button-test.html">상세 테스트</a><a href="/index.html">버스 주차</a><a href="/traffic.html">장애물 피하기</a></nav></main>
+<script>const card=document.getElementById('card'),net=document.getElementById('net'),state=document.getElementById('state'),raw=document.getElementById('raw');const ws=new WebSocket('ws://'+location.hostname+':81');ws.onopen=()=>{net.textContent='ESP32 연결됨';raw.textContent='버튼 입력을 기다리는 중입니다.'};ws.onclose=()=>{net.textContent='연결 끊김';state.textContent='재연결 필요'};ws.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='input'){const p=!!m.data.forward;card.classList.toggle('pressed',p);state.textContent=p?'버튼 눌림!':'버튼 떼짐';raw.textContent=p?'INPUT_PULLUP · LOW · forward: true':'INPUT_PULLUP · HIGH · forward: false'}else if(m.type==='ping')ws.send(JSON.stringify({type:'pong'}))}catch(_){}};</script></body></html>
+)rawliteral";
 
 // ============================================================================
 // 4. WEBSOCKET & NETWORK FUNCTIONS
@@ -184,6 +197,83 @@ void startAccessPoint() {
     WiFi.softAPIP().toString().c_str(), WEBSOCKET_PORT);
 }
 
+String getContentType(const String& path) {
+  if (path.endsWith(".html")) return "text/html; charset=utf-8";
+  if (path.endsWith(".css")) return "text/css; charset=utf-8";
+  if (path.endsWith(".js")) return "application/javascript; charset=utf-8";
+  if (path.endsWith(".json")) return "application/json";
+  if (path.endsWith(".png")) return "image/png";
+  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+  if (path.endsWith(".svg")) return "image/svg+xml";
+  if (path.endsWith(".ico")) return "image/x-icon";
+  return "application/octet-stream";
+}
+
+bool serveFile(String path) {
+  if (!fileSystemReady || path.indexOf("..") >= 0) return false;
+  if (path.endsWith("/")) path += "index.html";
+  if (!LittleFS.exists(path)) return false;
+
+  File file = LittleFS.open(path, "r");
+  if (!file || file.isDirectory()) {
+    file.close();
+    return false;
+  }
+
+  if (path.endsWith(".html")) {
+    httpServer.sendHeader("Cache-Control", "no-cache");
+  } else {
+    httpServer.sendHeader("Cache-Control", "public, max-age=86400");
+  }
+  httpServer.streamFile(file, getContentType(path));
+  file.close();
+  return true;
+}
+
+void redirectToHome() {
+  httpServer.sendHeader("Location", "http://192.168.4.1/", true);
+  httpServer.send(302, "text/plain", "");
+}
+
+void startHttpServer() {
+  fileSystemReady = LittleFS.begin(false);
+  if (fileSystemReady) {
+    Serial.printf("[HTTP] LittleFS mounted: %u / %u bytes used\n",
+      (unsigned int)LittleFS.usedBytes(), (unsigned int)LittleFS.totalBytes());
+  } else {
+    Serial.println("[HTTP] LittleFS not mounted; using embedded GPIO 4 page");
+  }
+
+  httpServer.on("/", HTTP_GET, []() {
+#if SINGLE_BUTTON_TEST_MODE
+    if (serveFile("/button-test.html")) return;
+#else
+    if (serveFile("/index.html")) return;
+#endif
+    httpServer.send_P(200, "text/html; charset=utf-8", FALLBACK_TEST_PAGE);
+  });
+
+  httpServer.on("/api/info", HTTP_GET, []() {
+    String json = "{\"status\":\"running\",\"mode\":\"esp32-direct\",\"ip\":\"192.168.4.1\",\"webSocketPort\":81}";
+    httpServer.send(200, "application/json", json);
+  });
+
+  // Common captive-portal checks are redirected to the ESP32 home page.
+  httpServer.on("/generate_204", HTTP_ANY, redirectToHome);
+  httpServer.on("/hotspot-detect.html", HTTP_ANY, redirectToHome);
+  httpServer.on("/connecttest.txt", HTTP_ANY, redirectToHome);
+  httpServer.on("/ncsi.txt", HTTP_ANY, redirectToHome);
+
+  httpServer.onNotFound([]() {
+    if (serveFile(httpServer.uri())) return;
+    redirectToHome();
+  });
+
+  dnsServer.start(53, "*", AP_IP);
+  httpServer.begin();
+  Serial.println("[HTTP] Open http://192.168.4.1 in a browser");
+}
+
 // ============================================================================
 // 5. BUTTON SCAN & DEBOUNCE
 // ============================================================================
@@ -251,6 +341,9 @@ void setup() {
   // Create the ESP32's own Wi-Fi hotspot
   startAccessPoint();
 
+  // Serve the test page and games directly from the ESP32.
+  startHttpServer();
+
   // Accept the Node.js bridge at ws://192.168.4.1:81
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
@@ -266,6 +359,8 @@ void loop() {
 
   // 1. Maintain WebSocket server event pump
   webSocket.loop();
+  httpServer.handleClient();
+  dnsServer.processNextRequest();
 
   // 2. Scan and debounce 4 physical buttons
   updateButtons();
