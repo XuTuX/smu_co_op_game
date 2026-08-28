@@ -98,6 +98,19 @@ async function runTest() {
   }
   console.log('✅ TEST PASSED: obstacle-dodge character asset is served');
 
+  const buttonTestHtml = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${TEST_PORT}/button-test.html`, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => resolve({ statusCode: response.statusCode, body }));
+    }).on('error', reject);
+  });
+  if (buttonTestHtml.statusCode !== 200 || !buttonTestHtml.body.includes('GPIO 4 버튼 실시간 상태')) {
+    throw new Error(`Expected GPIO 4 test page, got HTTP ${buttonTestHtml.statusCode}`);
+  }
+  console.log('✅ TEST PASSED: standalone GPIO 4 button test page is served');
+
   // 1. Connect Browser Client
   const browserWs = new WebSocket(`ws://localhost:${TEST_PORT}`);
   let espStatusReceived = null;

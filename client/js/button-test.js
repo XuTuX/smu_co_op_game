@@ -47,7 +47,7 @@ class GpioButtonTest {
     this.lastInputTimeElement.textContent = now.toLocaleTimeString('ko-KR', { hour12: false });
 
     if (!this.hasReceivedInput || nextPressed !== this.isPressed) {
-      if (this.hasReceivedInput && nextPressed) {
+      if (nextPressed) {
         this.pressCount += 1;
         this.pressCountElement.textContent = String(this.pressCount);
       }

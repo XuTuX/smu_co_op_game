@@ -7,6 +7,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const PORT = process.env.PORT || 3000;
 const ESP32_WS_URL = process.env.ESP32_WS_URL || 'ws://192.168.4.1:81';
 const ESP32_RECONNECT_MS = 2500;
+const ESP32_CONNECT_TIMEOUT_MS = 5000;
 const ESP32_TIMEOUT_MS = 6000;
 const app = express();
 
@@ -129,8 +130,15 @@ function connectToEsp32AccessPoint() {
 
   const ws = new WebSocket(ESP32_WS_URL);
   esp32Socket = ws;
+  const connectionTimer = setTimeout(() => {
+    if (ws.readyState === WebSocket.CONNECTING) {
+      console.log('[ESP32 AP] Connection timed out; waiting to retry...');
+      ws.terminate();
+    }
+  }, ESP32_CONNECT_TIMEOUT_MS);
 
   ws.on('open', () => {
+    clearTimeout(connectionTimer);
     esp32LastSeen = Date.now();
     console.log(`[ESP32 AP] WebSocket connected: ${ESP32_WS_URL}`);
     updateEsp32Status(true);
@@ -146,6 +154,7 @@ function connectToEsp32AccessPoint() {
   });
 
   ws.on('close', () => {
+    clearTimeout(connectionTimer);
     if (esp32Socket === ws) {
       esp32Socket = null;
       updateEsp32Status(false);
@@ -231,15 +240,14 @@ wss.on('connection', (ws, req) => {
 
 // Watchdog interval to detect silent ESP32 disconnection
 setInterval(() => {
-  if (esp32Socket) {
-    if (esp32Socket.readyState !== WebSocket.OPEN || (Date.now() - esp32LastSeen > ESP32_TIMEOUT_MS)) {
-      console.log('[WS] ESP32 connection timed out (no heartbeat or packets)');
-      const staleSocket = esp32Socket;
-      esp32Socket = null;
-      updateEsp32Status(false);
-      staleSocket.terminate();
-      scheduleEsp32Reconnect();
-    }
+  if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN &&
+      Date.now() - esp32LastSeen > ESP32_TIMEOUT_MS) {
+    console.log('[WS] ESP32 connection timed out (no heartbeat or packets)');
+    const staleSocket = esp32Socket;
+    esp32Socket = null;
+    updateEsp32Status(false);
+    staleSocket.terminate();
+    scheduleEsp32Reconnect();
   }
 }, 1500);
 

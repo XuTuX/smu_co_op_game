@@ -25,6 +25,7 @@ parking-lot/
 ├── client/                       # 프론트엔드 웹 게임
 │   ├── index.html                # 게임 UI, HUD 및 모달
 │   ├── traffic.html              # 전체 화면형 장애물 피하기 게임 화면
+│   ├── button-test.html          # GPIO 4 버튼 1개 연결·입력 확인 페이지
 │   ├── style.css                 # 반응형 사이버 아케이드 디자인
 │   ├── traffic.css               # 장애물 피하기 전용 스타일
 │   └── js/
@@ -113,6 +114,7 @@ npm start
 
 - 크롬(Chrome) 또는 엣지(Edge) 브라우저에서 `http://localhost:3000` 으로 접속합니다.
 - 장애물 피하기 버전은 `http://localhost:3000/traffic.html`에서 바로 열 수 있습니다.
+- 버튼 하나만 확인할 때는 `http://localhost:3000/button-test.html`로 접속합니다.
 - 게임 PC는 ESP32가 만든 `hihi` Wi-Fi에 연결한 상태에서도 `http://localhost:3000`으로 접속할 수 있습니다.
 
 ### 3) 아두이노 없이 PC 테스트
@@ -138,7 +140,8 @@ ESP32가 자체 2.4GHz Wi-Fi AP를 만듭니다. 외부 공유기는 필요하�
    const uint16_t WEBSOCKET_PORT = 81;
    ```
 3. AP 비밀번호는 8자 이상이어야 합니다.
-4. VSCode 하단 PlatformIO 툴바에서 **Build (체크 표시)** 및 **Upload (화살표 표시)** 버튼을 클릭하여 업로드합니다.
+4. 버튼 하나를 GPIO 4에 연결해 시험하는 동안에는 `SINGLE_BUTTON_TEST_MODE`를 `1`로 둡니다. 버튼 4개를 모두 연결할 때 `0`으로 바꾸면 원래 보드별 핀 배치로 돌아갑니다.
+5. VSCode 하단 PlatformIO 툴바에서 **Build (체크 표시)** 및 **Upload (화살표 표시)** 버튼을 클릭하여 업로드합니다.
 
 ---
 
