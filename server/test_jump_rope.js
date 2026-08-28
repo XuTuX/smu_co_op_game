@@ -30,6 +30,19 @@ function makeHarness() {
   game.elapsed = 0;
   game.score = 0;
   game.perfectCount = 0;
+  game.combo = 0;
+  game.bestCombo = 0;
+  game.feverGauge = 0;
+  game.feverRemaining = 0;
+  game.doubleRopeRemaining = 0;
+  game.feedbacks = [];
+  game.particles = [];
+  game.shake = 0;
+  game.hitFreeze = 0;
+  game.ropeCenterY = 438;
+  game.ropeRadius = 248;
+  game.groundY = 690;
+  game.ropeAngle = -Math.PI / 2;
   game.state = 'PLAYING';
   game.players = game.createPlayers();
   game.soundEngine = { playBeep() {}, playSuccess() {}, playCrash() {} };
@@ -74,4 +87,25 @@ const startingSpeed = speedGame.getRopeSpeed();
 speedGame.elapsed = 60;
 assert(speedGame.getRopeSpeed() > startingSpeed, 'rope speed should increase during the round');
 
-console.log('✅ JUMP ROPE TEST PASSED: four independent jumps, lives, scoring, and difficulty work');
+const geometryGame = makeHarness();
+geometryGame.ropeAngle = Math.PI / 2;
+const bottomGeometry = geometryGame.getRopeGeometry();
+assert.strictEqual(bottomGeometry.midpointY, 686, 'visible rope midpoint should reach the collision ground');
+assert.strictEqual(bottomGeometry.controlY, 934, 'quadratic control point must compensate for midpoint interpolation');
+assert(Math.abs(bottomGeometry.midpointY - geometryGame.groundY) <= 4, 'rope and player feet must meet visually');
+
+const eventGame = makeHarness();
+eventGame.doubleRopeRemaining = 5;
+assert.deepStrictEqual(Array.from(eventGame.getRopeOffsets()), [0, Math.PI], 'double-rope event should render and judge two ropes');
+
+const feverGame = makeHarness();
+feverGame.players.forEach((player) => { player.height = 100; });
+feverGame.resolveRopePass();
+feverGame.resolveRopePass();
+feverGame.resolveRopePass();
+assert.strictEqual(feverGame.combo, 3, 'three full-team clears should build a three combo');
+assert.strictEqual(feverGame.feverRemaining, 7, 'three perfect clears should activate seven-second fever');
+feverGame.resolveRopePass();
+assert.strictEqual(feverGame.score, 20, 'fever should double all four clear points');
+
+console.log('✅ JUMP ROPE TEST PASSED: floor sync, double ropes, combo fever, lives, and scoring work');

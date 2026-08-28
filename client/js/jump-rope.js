@@ -36,6 +36,18 @@ class TeamJumpRopeGame {
     this.timeRemaining = this.gameDuration;
     this.score = 0;
     this.perfectCount = 0;
+    this.combo = 0;
+    this.bestCombo = 0;
+    this.feverGauge = 0;
+    this.feverRemaining = 0;
+    this.doubleRopeRemaining = 0;
+    this.doubleRopeEventIndex = 0;
+    this.doubleRopeStarts = [18, 40];
+    this.doubleRopeDurations = [7, 8];
+    this.feedbacks = [];
+    this.particles = [];
+    this.shake = 0;
+    this.hitFreeze = 0;
     this.lastTime = 0;
     this.readyPlayers = this.createReadyState();
     this.previousReadyInputs = this.createReadyState();
@@ -75,6 +87,7 @@ class TeamJumpRopeGame {
       stunned: 0,
       flash: 0,
       squash: 0,
+      lastJumpAt: -Infinity,
       eliminated: false
     }));
   }
@@ -180,6 +193,16 @@ class TeamJumpRopeGame {
     this.timeRemaining = this.gameDuration;
     this.score = 0;
     this.perfectCount = 0;
+    this.combo = 0;
+    this.bestCombo = 0;
+    this.feverGauge = 0;
+    this.feverRemaining = 0;
+    this.doubleRopeRemaining = 0;
+    this.doubleRopeEventIndex = 0;
+    this.feedbacks = [];
+    this.particles = [];
+    this.shake = 0;
+    this.hitFreeze = 0;
     this.passPulse = 0;
     this.inputManager.resetAll();
     this.previousPlayInputs = this.createReadyState();
@@ -215,6 +238,7 @@ class TeamJumpRopeGame {
     if (!player || player.eliminated || player.stunned > 0 || player.height > 2) return false;
     player.velocity = this.jumpVelocity;
     player.squash = 1;
+    player.lastJumpAt = this.elapsed;
     this.soundEngine.playBeep(360 + this.players.indexOf(player) * 80, 0.08, 'triangle');
     return true;
   }
@@ -225,10 +249,49 @@ class TeamJumpRopeGame {
     return Math.PI * 2 * rotationsPerSecond;
   }
 
+  getRopeOffsets() {
+    return this.doubleRopeRemaining > 0 ? [0, Math.PI] : [0];
+  }
+
+  getSecondsToNextPass() {
+    const fullTurn = Math.PI * 2;
+    const speed = this.getRopeSpeed();
+    return Math.min(...this.getRopeOffsets().map((offset) => {
+      const angle = this.ropeAngle + offset;
+      const delta = ((Math.PI / 2 - angle) % fullTurn + fullTurn) % fullTurn;
+      return delta / speed;
+    }));
+  }
+
+  getTempoInfo() {
+    if (this.elapsed >= 45) return { level: 4, label: 'FINAL RUSH' };
+    if (this.elapsed >= 30) return { level: 3, label: 'SPEED UP' };
+    if (this.elapsed >= 15) return { level: 2, label: 'RHYTHM' };
+    return { level: 1, label: 'WARM UP' };
+  }
+
   update(dt) {
+    if (this.hitFreeze > 0) {
+      this.hitFreeze = Math.max(0, this.hitFreeze - dt);
+      this.updateEffects(dt);
+      this.updateHUD();
+      return;
+    }
+
     this.elapsed += dt;
     this.timeRemaining = Math.max(0, this.gameDuration - this.elapsed);
     this.passPulse = Math.max(0, this.passPulse - dt * 2.8);
+    this.feverRemaining = Math.max(0, this.feverRemaining - dt);
+    this.doubleRopeRemaining = Math.max(0, this.doubleRopeRemaining - dt);
+    this.shake = Math.max(0, this.shake - dt * 25);
+
+    const nextDoubleStart = this.doubleRopeStarts[this.doubleRopeEventIndex];
+    if (nextDoubleStart !== undefined && this.elapsed >= nextDoubleStart) {
+      this.doubleRopeRemaining = this.doubleRopeDurations[this.doubleRopeEventIndex];
+      this.doubleRopeEventIndex++;
+      this.showCallout('DOUBLE ROPE!', 1100);
+      this.soundEngine.playLaser();
+    }
 
     for (const player of this.players) {
       player.flash = Math.max(0, player.flash - dt);
@@ -247,10 +310,13 @@ class TeamJumpRopeGame {
 
     const previousAngle = this.ropeAngle;
     this.ropeAngle += this.getRopeSpeed() * dt;
-    const previousPass = Math.floor((previousAngle - Math.PI / 2) / (Math.PI * 2));
-    const currentPass = Math.floor((this.ropeAngle - Math.PI / 2) / (Math.PI * 2));
-    if (currentPass > previousPass) this.resolveRopePass();
+    for (const offset of this.getRopeOffsets()) {
+      const previousPass = Math.floor((previousAngle + offset - Math.PI / 2) / (Math.PI * 2));
+      const currentPass = Math.floor((this.ropeAngle + offset - Math.PI / 2) / (Math.PI * 2));
+      if (currentPass > previousPass) this.resolveRopePass();
+    }
 
+    this.updateEffects(dt);
     this.updateJumpCallout();
     this.updateHUD();
     if (this.timeRemaining <= 0) this.endGame('TIME_UP');
@@ -260,40 +326,98 @@ class TeamJumpRopeGame {
     const activePlayers = this.players.filter((player) => !player.eliminated);
     if (!activePlayers.length) return;
     let allClear = true;
+    const missedLabels = [];
+    const multiplier = this.feverRemaining > 0 ? 2 : 1;
     for (const player of activePlayers) {
-      if (player.height >= this.clearHeight) {
+      // A press made just as the visible rope touches the floor is valid even
+      // before the first physics frame has lifted the sprite very far.
+      const onBeatJump = this.elapsed - player.lastJumpAt <= 0.16;
+      if (player.height >= this.clearHeight || onBeatJump) {
         player.clears++;
-        this.score++;
+        this.score += multiplier;
         player.flash = 0.25;
+        this.addFeedback(player, `CLEAR +${multiplier}`, '#a7f3d0');
+        this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 7);
       } else {
         allClear = false;
+        missedLabels.push(player.label);
         player.lives--;
         player.misses++;
         player.stunned = 0.75;
         player.flash = 0.75;
         player.eliminated = player.lives <= 0;
+        this.addFeedback(player, 'MISS!', '#fb7185');
+        this.spawnBurst(player.x, this.groundY - 32, '#fb7185', 16);
       }
     }
     this.passPulse = 1;
-    if (allClear) {
+    const fullTeamPerfect = allClear && activePlayers.length === 4 && this.players.every((player) => !player.eliminated);
+    if (fullTeamPerfect) {
       this.perfectCount++;
-      this.showCallout('PERFECT ×4!', 650);
+      this.combo++;
+      this.bestCombo = Math.max(this.bestCombo, this.combo);
+      this.feverGauge++;
+      if (this.feverGauge >= 3) {
+        this.feverGauge = 0;
+        this.feverRemaining = 7;
+        this.showCallout('FEVER! SCORE ×2', 1000);
+      } else {
+        this.showCallout(`PERFECT COMBO ×${this.combo}`, 700);
+      }
       this.soundEngine.playSuccess();
     } else {
-      this.showCallout('줄에 걸렸어요!', 650);
-      this.soundEngine.playCrash();
+      this.combo = 0;
+      if (!allClear) {
+        this.showCallout(`${missedLabels.join(' · ')} MISS!`, 850);
+        this.soundEngine.playCrash();
+        this.shake = 13;
+        this.hitFreeze = 0.1;
+      }
     }
     if (this.players.every((player) => player.eliminated)) this.endGame('ALL_OUT');
   }
 
   updateJumpCallout() {
-    const phase = ((this.ropeAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    const warning = phase > 0.48 && phase < 1.18;
+    const seconds = this.getSecondsToNextPass();
+    const warning = seconds <= 0.28 && seconds > 0.04;
     const callout = document.getElementById('rope-callout');
     if (!this.calloutTimer) {
-      callout.textContent = 'JUMP!';
+      callout.textContent = this.doubleRopeRemaining > 0 ? 'JUMP! · DOUBLE' : 'JUMP!';
       callout.classList.toggle('hidden', !warning);
     }
+  }
+
+  addFeedback(player, text, color) {
+    this.feedbacks.push({ x: player.x, y: this.groundY - 230 - player.height, text, color, life: 1 });
+  }
+
+  spawnBurst(x, y, color, amount) {
+    for (let i = 0; i < amount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 90 + Math.random() * 210;
+      this.particles.push({
+        x, y, color,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 80,
+        size: 4 + Math.random() * 8,
+        life: 0.55 + Math.random() * 0.35
+      });
+    }
+  }
+
+  updateEffects(dt) {
+    for (const feedback of this.feedbacks) {
+      feedback.y -= 70 * dt;
+      feedback.life -= dt * 1.25;
+    }
+    this.feedbacks = this.feedbacks.filter((feedback) => feedback.life > 0);
+    for (const particle of this.particles) {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.vy += 560 * dt;
+      particle.life -= dt;
+    }
+    this.particles = this.particles.filter((particle) => particle.life > 0);
   }
 
   showCallout(message, duration) {
@@ -315,6 +439,43 @@ class TeamJumpRopeGame {
       time.textContent = Math.ceil(this.timeRemaining);
       time.classList.toggle('urgent', this.timeRemaining <= 10);
     }
+    const multiplierNode = document.getElementById('rope-multiplier');
+    if (multiplierNode) multiplierNode.textContent = this.feverRemaining > 0 ? '×2' : '×1';
+    this.updateRhythmHUD();
+  }
+
+  updateRhythmHUD() {
+    const hud = document.getElementById('rope-rhythm-hud');
+    if (!hud) return;
+    const seconds = this.getSecondsToNextPass();
+    let phase = 'safe';
+    let beatText = '줄이 돌아오는 중';
+    if (this.passPulse > 0.45) {
+      phase = 'result';
+      beatText = '판정 완료';
+    } else if (seconds <= 0.28) {
+      phase = 'jump';
+      beatText = '바닥 도착 · 지금 점프!';
+    } else if (seconds <= 0.72) {
+      phase = 'ready';
+      beatText = '준비하세요';
+    }
+    hud.dataset.phase = phase;
+    hud.classList.toggle('is-fever', this.feverRemaining > 0);
+    const tempo = this.getTempoInfo();
+    document.getElementById('rope-tempo-label').textContent = this.doubleRopeRemaining > 0
+      ? `TEMPO ${tempo.level} · DOUBLE ROPE!`
+      : `TEMPO ${tempo.level} · ${tempo.label}`;
+    document.getElementById('rope-beat-text').textContent = beatText;
+    document.getElementById('rope-beat-time').textContent = `${Math.min(9.9, seconds).toFixed(1)}s`;
+    document.getElementById('rope-beat-bar').style.width = `${Math.max(0, Math.min(100, (1 - seconds / 1.2) * 100))}%`;
+    document.getElementById('rope-combo').textContent = `×${this.combo}`;
+    document.getElementById('rope-fever-text').textContent = this.feverRemaining > 0
+      ? `${this.feverRemaining.toFixed(1)}s · ×2`
+      : `${this.feverGauge} / 3`;
+    document.getElementById('rope-fever-bar').style.width = this.feverRemaining > 0
+      ? `${(this.feverRemaining / 7) * 100}%`
+      : `${(this.feverGauge / 3) * 100}%`;
   }
 
   endGame(reason) {
@@ -356,11 +517,24 @@ class TeamJumpRopeGame {
     ctx.globalAlpha = 0.9;
     ctx.font = '950 42px "Arial Rounded MT Bold", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('4-PLAYER  ·  ONE ROPE  ·  FOUR JUMPS', 800, 82);
+    ctx.fillText(this.doubleRopeRemaining > 0
+      ? '⚡ DOUBLE ROPE EVENT · TWO ROPES! ⚡'
+      : '4-PLAYER  ·  ONE ROPE  ·  FOUR JUMPS', 800, 82);
     ctx.globalAlpha = 1;
 
     ctx.fillStyle = '#6d5a9a';
     ctx.fillRect(0, this.groundY, this.canvas.width, this.canvas.height - this.groundY);
+    if (this.state === 'PLAYING') {
+      const seconds = this.getSecondsToNextPass();
+      if (seconds < 0.3) {
+        const danger = Math.max(0, 1 - seconds / 0.3);
+        ctx.fillStyle = `rgba(251,113,133,${0.12 + danger * 0.36})`;
+        ctx.fillRect(330, this.groundY - 24, 940, 48);
+        ctx.strokeStyle = `rgba(255,255,255,${0.35 + danger * 0.5})`;
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(350, this.groundY); ctx.lineTo(1250, this.groundY); ctx.stroke();
+      }
+    }
     ctx.strokeStyle = 'rgba(255,255,255,.18)';
     ctx.lineWidth = 3;
     for (let y = this.groundY + 55; y < 900; y += 55) {
@@ -371,29 +545,62 @@ class TeamJumpRopeGame {
     }
   }
 
-  getRopeGeometry() {
-    const phase = this.ropeAngle;
+  getRopeGeometry(angle = this.ropeAngle) {
+    const phase = angle;
+    // A quadratic curve reaches only halfway from its endpoints to its control
+    // point at x=50%. Calculate the control point from the desired midpoint so
+    // the visible rope really reaches the same groundY used by collision logic.
+    const midpointY = this.ropeCenterY + Math.sin(phase) * this.ropeRadius;
     return {
-      y: this.ropeCenterY + Math.sin(phase) * this.ropeRadius,
-      front: Math.cos(phase) < 0,
-      width: 8 + Math.max(0, -Math.cos(phase)) * 6
+      midpointY,
+      controlY: midpointY * 2 - this.ropeCenterY,
+      front: Math.sin(phase) > 0,
+      atGround: Math.abs(midpointY - (this.groundY - 4)) < 20,
+      width: 8 + Math.max(0, Math.sin(phase)) * 7
     };
   }
 
-  drawRope() {
+  drawRope(angle = this.ropeAngle, secondary = false) {
     const ctx = this.ctx;
-    const rope = this.getRopeGeometry();
+    const rope = this.getRopeGeometry(angle);
     ctx.save();
-    ctx.strokeStyle = rope.front ? '#fef08a' : 'rgba(254,240,138,.5)';
+    const normalColor = secondary ? '#67e8f9' : '#fef08a';
+    const backColor = secondary ? 'rgba(103,232,249,.48)' : 'rgba(254,240,138,.5)';
+    ctx.strokeStyle = rope.atGround ? '#fb7185' : (rope.front ? normalColor : backColor);
     ctx.lineWidth = rope.width;
     ctx.lineCap = 'round';
-    ctx.shadowColor = rope.front ? 'rgba(250,204,21,.65)' : 'transparent';
-    ctx.shadowBlur = rope.front ? 12 : 0;
+    ctx.shadowColor = rope.atGround
+      ? 'rgba(251,113,133,.9)'
+      : (rope.front ? (secondary ? 'rgba(103,232,249,.75)' : 'rgba(250,204,21,.65)') : 'transparent');
+    ctx.shadowBlur = rope.atGround ? 22 : (rope.front ? 12 : 0);
     ctx.beginPath();
     ctx.moveTo(230, this.ropeCenterY);
-    ctx.quadraticCurveTo(800, rope.y, 1370, this.ropeCenterY);
+    ctx.quadraticCurveTo(800, rope.controlY, 1370, this.ropeCenterY);
     ctx.stroke();
     ctx.restore();
+  }
+
+  drawEffects() {
+    const ctx = this.ctx;
+    for (const particle of this.particles) {
+      ctx.globalAlpha = Math.min(1, particle.life * 2);
+      ctx.fillStyle = particle.color;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    for (const feedback of this.feedbacks) {
+      ctx.globalAlpha = Math.min(1, feedback.life * 2);
+      ctx.font = '950 34px "Arial Rounded MT Bold", system-ui, sans-serif';
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#161228';
+      ctx.strokeText(feedback.text, feedback.x, feedback.y);
+      ctx.fillStyle = feedback.color;
+      ctx.fillText(feedback.text, feedback.x, feedback.y);
+    }
+    ctx.globalAlpha = 1;
   }
 
   drawTurner(x, flip) {
@@ -478,22 +685,35 @@ class TeamJumpRopeGame {
   draw() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.save();
+    if (this.shake > 0) ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
     this.drawBackground();
-    const rope = this.getRopeGeometry();
-    if (!rope.front) this.drawRope();
+    const ropes = this.getRopeOffsets().map((offset, index) => ({
+      angle: this.ropeAngle + offset,
+      secondary: index === 1,
+      geometry: this.getRopeGeometry(this.ropeAngle + offset)
+    }));
+    ropes.filter((rope) => !rope.geometry.front).forEach((rope) => this.drawRope(rope.angle, rope.secondary));
     this.drawTurner(245, false);
     this.drawTurner(1355, true);
     this.players.forEach((player, index) => this.drawPlayer(player, index));
-    if (rope.front) this.drawRope();
+    ropes.filter((rope) => rope.geometry.front).forEach((rope) => this.drawRope(rope.angle, rope.secondary));
+    this.drawEffects();
 
     if (this.passPulse > 0) {
       ctx.fillStyle = `rgba(255,255,255,${this.passPulse * 0.12})`;
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
+    ctx.restore();
     this.canvas.dataset.gameState = this.state;
     this.canvas.dataset.score = String(this.score);
     this.canvas.dataset.perfect = String(this.perfectCount);
     this.canvas.dataset.ropeAngle = this.ropeAngle.toFixed(3);
+    this.canvas.dataset.ropeMidpointY = this.getRopeGeometry().midpointY.toFixed(1);
+    this.canvas.dataset.ropeGroundY = String(this.groundY);
+    this.canvas.dataset.ropeCount = String(this.getRopeOffsets().length);
+    this.canvas.dataset.combo = String(this.combo);
+    this.canvas.dataset.fever = this.feverRemaining.toFixed(2);
   }
 
   loop(timestamp) {
