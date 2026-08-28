@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#c6f36b">
+  <title>Bus Co-op Club — GPIO 4 Button Test</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="button-test.css">
+</head>
+<body class="button-test-page">
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="brand-lockup" aria-label="Bus Co-op Club">
+        <div class="brand-mark test-brand" aria-hidden="true">4</div>
+        <div>
+          <p class="eyebrow">HARDWARE CHECK</p>
+          <h1>GPIO 4 Test</h1>
+        </div>
+      </div>
+
+      <div id="test-hardware-badge" class="status-badge disconnected" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="test-hardware-text">ESP32 연결 대기</span>
+      </div>
+    </header>
+
+    <nav class="mode-switch" aria-label="페이지 선택">
+      <a class="mode-link" href="index.html"><span>01</span> 버스 주차</a>
+      <a class="mode-link" href="traffic.html"><span>02</span> 장애물 피하기</a>
+      <a class="mode-link active test-active" href="button-test.html"><span>03</span> GPIO 4 버튼 테스트</a>
+    </nav>
+
+    <main class="game-card button-test-card">
+      <div class="test-intro">
+        <div>
+          <p class="game-card-label">ONE BUTTON · LIVE INPUT</p>
+          <h2>버튼을 누르면 화면이<br><span>즉시 초록색</span>으로 바뀝니다.</h2>
+        </div>
+        <ol class="test-steps">
+          <li><b>GPIO 4</b>와 <b>GND</b> 사이에 버튼 연결</li>
+          <li>컴퓨터를 ESP32 Wi-Fi <b>hihi</b>에 연결</li>
+          <li>버튼을 누르고 떼면서 상태 확인</li>
+        </ol>
+      </div>
+
+      <section id="button-live-panel" class="button-live-panel released" aria-live="assertive" aria-label="GPIO 4 버튼 실시간 상태">
+        <div class="pin-chip">GPIO <strong>4</strong></div>
+        <div class="button-visual" aria-hidden="true">
+          <div class="button-cap"><span></span></div>
+          <div class="button-base"></div>
+        </div>
+        <div class="live-copy">
+          <span id="button-state-kicker">INPUT_PULLUP · HIGH</span>
+          <strong id="button-state-text">버튼 떼짐</strong>
+          <p id="button-state-help">버튼을 누르면 GPIO 4가 GND와 연결됩니다.</p>
+        </div>
+      </section>
+
+      <section class="test-stats" aria-label="버튼 테스트 통계">
+        <article>
+          <span>누른 횟수</span>
+          <strong id="press-count">0</strong>
+        </article>
+        <article>
+          <span>수신 패킷</span>
+          <strong id="packet-count">0</strong>
+        </article>
+        <article>
+          <span>마지막 입력</span>
+          <strong id="last-input-time">—</strong>
+        </article>
+      </section>
+
+      <section class="test-log-card">
+        <div class="test-log-heading">
+          <h3>실시간 입력 기록</h3>
+          <button id="clear-log-btn" type="button">기록 지우기</button>
+        </div>
+        <ol id="input-log" class="input-log">
+          <li class="empty-log">ESP32 입력을 기다리는 중입니다.</li>
+        </ol>
+      </section>
+
+      <p class="test-note"><b>참고:</b> 현재 펌웨어에서 GPIO 4는 P1 전진 입력으로 전송됩니다. 버튼을 누르면 <code>forward: true</code>, 떼면 <code>forward: false</code>가 표시됩니다.</p>
+    </main>
+  </div>
+
+  <script src="js/network.js"></script>
+  <script src="js/button-test.js"></script>
+</body>
+</html>

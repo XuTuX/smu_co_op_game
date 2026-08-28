@@ -104,8 +104,8 @@ npm start
 ========================================================
 🚌 ESP32 Cooperative Bus Parking Game Server Started!
 🌐 Local Web Game URL: http://localhost:3000
-📡 Use the following IP for your ESP32 configuration:
-   👉 en0: http://192.168.0.15:3000 (Set SERVER_IP="192.168.0.15")
+📡 ESP32 AP: connect this computer to Wi-Fi "hihi"
+🔌 ESP32 WebSocket: ws://192.168.4.1:81
 ========================================================
 ```
 
@@ -113,7 +113,7 @@ npm start
 
 - 크롬(Chrome) 또는 엣지(Edge) 브라우저에서 `http://localhost:3000` 으로 접속합니다.
 - 장애물 피하기 버전은 `http://localhost:3000/traffic.html`에서 바로 열 수 있습니다.
-- 같은 Wi-Fi 망에 있는 다른 컴퓨터/태블릿/스마트폰에서도 `http://<서버IP>:3000`으로 접속하여 관전할 수 있습니다.
+- 게임 PC는 ESP32가 만든 `hihi` Wi-Fi에 연결한 상태에서도 `http://localhost:3000`으로 접속할 수 있습니다.
 
 ### 3) 아두이노 없이 PC 테스트
 
@@ -126,18 +126,19 @@ npm start
 
 ## 4. ESP32 펌웨어 설정 및 업로드
 
-ESP32와 컴퓨터가 **동일한 Wi-Fi 공유기(2.4GHz)**에 연결되어 있어야 합니다.
+ESP32가 자체 2.4GHz Wi-Fi AP를 만듭니다. 외부 공유기는 필요하지 않으며, 펌웨어 업로드 후 컴퓨터를 ESP32의 `hihi` Wi-Fi에 연결합니다.
 
 ### 방법 A: PlatformIO 사용 시 (추천)
 
 1. VSCode에서 본 프로젝트 폴더(`parking lot`)를 엽니다.
-2. `src/main.cpp` 파일을 열고 Wi-Fi 및 서버 IP를 수정합니다:
+2. `src/main.cpp` 파일을 열고 ESP32가 만들 AP 이름과 비밀번호를 확인합니다:
    ```cpp
-   const char* WIFI_SSID     = "사용중인_와이파이_이름";
-   const char* WIFI_PASSWORD = "와이파이_비밀번호";
-   const char* SERVER_IP     = "192.168.x.x"; // 위 서버 실행 시 터미널에 나온 컴퓨터 IP
+   const char* AP_SSID     = "hihi";
+   const char* AP_PASSWORD = "12345678";
+   const uint16_t WEBSOCKET_PORT = 81;
    ```
-3. VSCode 하단 PlatformIO 툴바에서 **Build (체크 표시)** 및 **Upload (화살표 표시)** 버튼을 클릭하여 업로드합니다.
+3. AP 비밀번호는 8자 이상이어야 합니다.
+4. VSCode 하단 PlatformIO 툴바에서 **Build (체크 표시)** 및 **Upload (화살표 표시)** 버튼을 클릭하여 업로드합니다.
 
 ---
 
@@ -147,7 +148,7 @@ ESP32와 컴퓨터가 **동일한 Wi-Fi 공유기(2.4GHz)**에 연결되어 있�
 2. **라이브러리 매니저** (Ctrl + Shift + I 또는 Cmd + Shift + I)에서 다음 2개 라이브러리를 검색하여 설치합니다:
    - `WebSockets` by *Markus Sattler* (v2.4.1 이상)
    - `ArduinoJson` by *Benoit Blanchon* (v7.0.0 이상)
-3. 코드 상단에서 본인의 Wi-Fi 정보와 컴퓨터 IP(`SERVER_IP`)를 수정합니다.
+3. 코드 상단에서 ESP32가 만들 `AP_SSID`와 `AP_PASSWORD`를 확인하거나 원하는 값으로 수정합니다.
 4. 보드 설정:
    - 보드: `ESP32 Dev Module` 또는 `ESP32S3 Dev Module`
    - 포트: ESP32가 연결된 COM/tty 포트 선택
@@ -160,12 +161,12 @@ ESP32와 컴퓨터가 **동일한 Wi-Fi 공유기(2.4GHz)**에 연결되어 있�
 ESP32 업로드 후 시리얼 모니터를 **115200 Baud**로 열면 다음과 같은 로그를 확인할 수 있습니다:
 
 ```text
-[WiFi] Connecting to MyHomeWiFi.....
-[WiFi] WiFi Connected!
-[WiFi] ESP32 IP Address: 192.168.0.45
-[WS] Configuring WebSocket Server -> 192.168.0.15:3000
-[WS] WebSocket connected to http://192.168.0.15:3000
-[WS] Sent ESP32 registration packet to server
+[WiFi AP] ESP32 access point started
+[WiFi AP] SSID: hihi
+[WiFi AP] Password: 12345678
+[WiFi AP] ESP32 IP: 192.168.4.1
+[WiFi AP] WebSocket: ws://192.168.4.1:81
+[WS] Client #0 connected from 192.168.4.2 (1 client(s))
 [BUTTON] Button 'Forward' PRESSED (GPIO 25)
 [INPUT SENT] FWD: 1 | BWD: 0 | LFT: 0 | RGT: 0
 [BUTTON] Button 'Forward' RELEASED (GPIO 25)
@@ -256,6 +257,7 @@ npm test
 2. 주차 단계별 판정 난이도
 3. 점수 기반 장애물 속도·생성 간격, 500점 레이저 2개, 빠른 별, 생명 하트
 4. HTTP 정적 파일 제공 및 브라우저·ESP32 WebSocket 중계
+5. ESP32 자체 AP WebSocket → Node.js → 브라우저 입력·연결 상태 통합 중계
 
 ---
 
@@ -263,9 +265,11 @@ npm test
 
 ### Q1. 웹 화면에 "ESP32 DISCONNECTED"라고 뜹니다.
 
-- ESP32와 서버 컴퓨터가 **동일한 Wi-Fi 네트워크**에 연결되어 있는지 확인하세요. (공유기 게스트 네트워크나 회사망은 기기 간 통신이 차단될 수 있습니다)
-- `SERVER_IP`가 컴퓨터의 현재 로컬 IP(192.168.x.x)와 정확히 일치하는지 확인하세요.
-- 컴퓨터 방화벽에서 포트 `3000`이 허용되어 있는지 확인하세요.
+- 컴퓨터의 Wi-Fi가 ESP32가 만든 `hihi` 네트워크에 연결되어 있는지 확인하세요.
+- 인터넷이 없다는 운영체제 경고가 표시되어도 `hihi` 연결을 유지하세요. 게임은 인터넷을 사용하지 않습니다.
+- 시리얼 모니터에 ESP32 AP 주소 `192.168.4.1`과 연결된 station 수가 표시되는지 확인하세요.
+- Node.js 서버 로그에 `[ESP32 AP] WebSocket connected`가 표시되는지 확인하세요.
+- 포트 `81`을 다른 장치나 방화벽 설정이 차단하지 않는지 확인하세요.
 
 ### Q2. 버튼을 누르면 반대로 동작하거나 반응이 없습니다.
 
@@ -274,4 +278,4 @@ npm test
 
 ### Q3. 서버 포트 3000번이 이미 사용 중이라는 오류가 발생합니다.
 
-- `PORT=3001 node server.js` 명령어로 포트를 변경하여 실행할 수 있습니다 (이 경우 ESP32 코드의 `SERVER_PORT`도 3001로 변경).
+- `PORT=3001 node server.js` 명령어로 웹 게임 포트만 변경할 수 있습니다. ESP32의 WebSocket 포트 `81`은 바꿀 필요가 없습니다.

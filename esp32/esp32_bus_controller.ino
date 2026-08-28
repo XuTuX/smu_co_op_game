@@ -23,23 +23,41 @@
  */
 
 #include <WiFi.h>
-#include <WebSocketsClient.h>
+#include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 
 // ============================================================================
-// 1. USER CONFIGURATION (EDIT YOUR WI-FI & SERVER INFO HERE)
+// 1. USER CONFIGURATION (ESP32 ACCESS POINT)
 // ============================================================================
-const char* WIFI_SSID     = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* AP_SSID     = "hihi";
+const char* AP_PASSWORD = "12345678"; // WPA2 password must be at least 8 characters
+const uint8_t AP_CHANNEL = 1;
+const uint8_t AP_MAX_CLIENTS = 4;
+const uint16_t WEBSOCKET_PORT = 81;
 
-// IP Address of the computer running the Node.js server (e.g. "192.168.0.15")
-const char* SERVER_IP     = "192.168.0.10";
-const uint16_t SERVER_PORT = 3000;
+// Temporary one-button setup: read the Forward/P1 action from GPIO 4 on any ESP32.
+// Change to 0 when all four buttons are ready to restore the normal board pin map.
+#define SINGLE_BUTTON_TEST_MODE 1
+
+const IPAddress AP_IP(192, 168, 4, 1);
+const IPAddress AP_GATEWAY(192, 168, 4, 1);
+const IPAddress AP_SUBNET(255, 255, 255, 0);
 
 // ============================================================================
 // 2. GPIO PIN ASSIGNMENTS
 // ============================================================================
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#if SINGLE_BUTTON_TEST_MODE
+  #define PIN_FORWARD   4
+  #if defined(CONFIG_IDF_TARGET_ESP32S3)
+    #define PIN_BACKWARD  5
+    #define PIN_LEFT      6
+    #define PIN_RIGHT     7
+  #else
+    #define PIN_BACKWARD  26
+    #define PIN_LEFT      27
+    #define PIN_RIGHT     14
+  #endif
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
   // Recommended Safe GPIOs for ESP32-S3
   #define PIN_FORWARD   4
   #define PIN_BACKWARD  5
@@ -77,8 +95,8 @@ Button buttons[] = {
 
 const size_t NUM_BUTTONS = sizeof(buttons) / sizeof(buttons[0]);
 
-WebSocketsClient webSocket;
-bool isWsConnected = false;
+WebSocketsServer webSocket(WEBSOCKET_PORT);
+uint8_t wsClientCount = 0;
 unsigned long lastHeartbeatTime = 0;
 unsigned long lastWifiCheckTime = 0;
 
@@ -86,9 +104,9 @@ unsigned long lastWifiCheckTime = 0;
 // 4. WEBSOCKET & NETWORK FUNCTIONS
 // ============================================================================
 
-// Send button state to Node.js WebSocket server
+// Send button state to every server/browser connected to the ESP32 AP
 void sendButtonState() {
-  if (!isWsConnected) return;
+  if (wsClientCount == 0) return;
 
   JsonDocument doc;
   doc["type"] = "input";
@@ -100,47 +118,36 @@ void sendButtonState() {
 
   String jsonString;
   serializeJson(doc, jsonString);
-  webSocket.sendTXT(jsonString);
+  webSocket.broadcastTXT(jsonString);
 
   // Serial debug print
   Serial.printf("[INPUT SENT] FWD: %d | BWD: %d | LFT: %d | RGT: %d\n",
     buttons[0].isPressed, buttons[1].isPressed, buttons[2].isPressed, buttons[3].isPressed);
 }
 
-// Send registration payload when newly connected
-void sendRegistration() {
-  JsonDocument doc;
-  doc["type"] = "register";
-  doc["role"] = "esp32";
-
-  String jsonString;
-  serializeJson(doc, jsonString);
-  webSocket.sendTXT(jsonString);
-  Serial.println("[WS] Sent ESP32 registration packet to server");
-}
-
 // Send periodic heartbeat ping
 void sendHeartbeat() {
-  if (!isWsConnected) return;
+  if (wsClientCount == 0) return;
   JsonDocument doc;
   doc["type"] = "ping";
   String jsonString;
   serializeJson(doc, jsonString);
-  webSocket.sendTXT(jsonString);
+  webSocket.broadcastTXT(jsonString);
 }
 
 // WebSocket Event Handler
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length) {
   switch (type) {
     case WStype_DISCONNECTED:
-      isWsConnected = false;
-      Serial.println("[WS] WebSocket disconnected! Waiting to reconnect...");
+      if (wsClientCount > 0) wsClientCount--;
+      Serial.printf("[WS] Client #%u disconnected (%u client(s) remaining)\n",
+        clientNum, wsClientCount);
       break;
 
     case WStype_CONNECTED:
-      isWsConnected = true;
-      Serial.printf("[WS] WebSocket connected to http://%s:%u\n", SERVER_IP, SERVER_PORT);
-      sendRegistration();
+      wsClientCount++;
+      Serial.printf("[WS] Client #%u connected from %s (%u client(s))\n",
+        clientNum, webSocket.remoteIP(clientNum).toString().c_str(), wsClientCount);
       sendButtonState();
       break;
 
@@ -157,31 +164,27 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   }
 }
 
-// Connect or Reconnect to Wi-Fi
-void ensureWiFiConnection() {
-  if (WiFi.status() == WL_CONNECTED) return;
+// Start the ESP32's own Wi-Fi network (SoftAP mode)
+void startAccessPoint() {
+  WiFi.mode(WIFI_AP);
 
-  Serial.printf("\n[WiFi] Connecting to %s", WIFI_SSID);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
+  if (!WiFi.softAPConfig(AP_IP, AP_GATEWAY, AP_SUBNET)) {
+    Serial.println("[WiFi AP] Failed to configure the static AP address!");
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n[WiFi] WiFi Connected!");
-    Serial.print("[WiFi] ESP32 IP Address: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("[WiFi] RSSI Signal: ");
-    Serial.print(WiFi.RSSI());
-    Serial.println(" dBm");
-  } else {
-    Serial.println("\n[WiFi] Connection attempt timed out. Will retry in background.");
+  if (!WiFi.softAP(AP_SSID, AP_PASSWORD, AP_CHANNEL, false, AP_MAX_CLIENTS)) {
+    Serial.println("[WiFi AP] Failed to start access point. Restarting...");
+    delay(2000);
+    ESP.restart();
   }
+
+  Serial.println("[WiFi AP] ESP32 access point started");
+  Serial.printf("[WiFi AP] SSID: %s\n", AP_SSID);
+  Serial.printf("[WiFi AP] Password: %s\n", AP_PASSWORD);
+  Serial.print("[WiFi AP] ESP32 IP: ");
+  Serial.println(WiFi.softAPIP());
+  Serial.printf("[WiFi AP] WebSocket: ws://%s:%u\n",
+    WiFi.softAPIP().toString().c_str(), WEBSOCKET_PORT);
 }
 
 // ============================================================================
@@ -236,6 +239,10 @@ void setup() {
   Serial.println("🚌 ESP32 4-Button Cooperative Bus Controller Initializing");
   Serial.println("========================================================");
 
+#if SINGLE_BUTTON_TEST_MODE
+  Serial.println("[BUTTON TEST] Single-button mode enabled: GPIO 4 -> Forward/P1");
+#endif
+
   // Initialize button GPIOs with internal pullup
   for (size_t i = 0; i < NUM_BUTTONS; i++) {
     pinMode(buttons[i].pin, INPUT_PULLUP);
@@ -244,14 +251,12 @@ void setup() {
     Serial.printf("   👉 %s: GPIO %d (INPUT_PULLUP)\n", buttons[i].name, buttons[i].pin);
   }
 
-  // Connect to Wi-Fi
-  ensureWiFiConnection();
+  // Create the ESP32's own Wi-Fi hotspot
+  startAccessPoint();
 
-  // Initialize WebSocket Client
-  Serial.printf("[WS] Configuring WebSocket Server -> %s:%d\n", SERVER_IP, SERVER_PORT);
-  webSocket.begin(SERVER_IP, SERVER_PORT, "/");
+  // Accept the Node.js bridge at ws://192.168.4.1:81
+  webSocket.begin();
   webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(2500); // Try reconnecting every 2.5s if dropped
   webSocket.enableHeartbeat(15000, 3000, 2);
 
   Serial.println("========================================================");
@@ -262,19 +267,16 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // 1. Maintain WebSocket client event pump
+  // 1. Maintain WebSocket server event pump
   webSocket.loop();
 
   // 2. Scan and debounce 4 physical buttons
   updateButtons();
 
-  // 3. Periodic Wi-Fi connection watchdog
+  // 3. Periodically report how many devices are connected to the ESP32 AP
   if (now - lastWifiCheckTime >= 5000) {
     lastWifiCheckTime = now;
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("[WiFi] Wi-Fi lost! Attempting auto-reconnect...");
-      ensureWiFiConnection();
-    }
+    Serial.printf("[WiFi AP] Connected station(s): %u\n", WiFi.softAPgetStationNum());
   }
 
   // 4. Send periodic heartbeat ping to server

@@ -5,6 +5,9 @@ const express = require('express');
 const { WebSocketServer, WebSocket } = require('ws');
 
 const PORT = process.env.PORT || 3000;
+const ESP32_WS_URL = process.env.ESP32_WS_URL || 'ws://192.168.4.1:81';
+const ESP32_RECONNECT_MS = 2500;
+const ESP32_TIMEOUT_MS = 6000;
 const app = express();
 
 // Serve static client files
@@ -18,6 +21,7 @@ app.get('/api/info', (req, res) => {
   res.json({
     status: 'running',
     port: PORT,
+    esp32WebSocketUrl: ESP32_WS_URL,
     localIps: getLocalIpAddresses()
   });
 });
@@ -29,7 +33,7 @@ const wss = new WebSocketServer({ server });
 const browserClients = new Set();
 let esp32Socket = null;
 let esp32LastSeen = 0;
-const ESP32_TIMEOUT_MS = 4000;
+let esp32ReconnectTimer = null;
 
 // Get local IPv4 addresses for user convenience
 function getLocalIpAddresses() {
@@ -75,6 +79,86 @@ function sanitizeInput(data) {
   };
 }
 
+function isEsp32Connected() {
+  return esp32Socket !== null && esp32Socket.readyState === WebSocket.OPEN;
+}
+
+function handleEsp32Payload(payload, ws, sourceLabel) {
+  const wasConnected = isEsp32Connected();
+  esp32Socket = ws;
+  esp32LastSeen = Date.now();
+
+  if (!wasConnected) {
+    console.log(`[ESP32 AP] Connected via ${sourceLabel}`);
+    updateEsp32Status(true);
+  }
+
+  if (payload.type === 'input' || ('forward' in payload && 'backward' in payload)) {
+    const rawInput = payload.type === 'input' ? payload.data : payload;
+    const sanitized = sanitizeInput(rawInput);
+    if (sanitized) {
+      broadcastToBrowsers({
+        type: 'input',
+        source: 'esp32',
+        data: sanitized,
+        timestamp: Date.now()
+      });
+    }
+    return;
+  }
+
+  if (payload.type === 'ping' && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+  }
+}
+
+function scheduleEsp32Reconnect() {
+  if (esp32ReconnectTimer) return;
+  esp32ReconnectTimer = setTimeout(() => {
+    esp32ReconnectTimer = null;
+    connectToEsp32AccessPoint();
+  }, ESP32_RECONNECT_MS);
+}
+
+// In AP mode the ESP32 owns the fixed address, so the PC server connects to it.
+function connectToEsp32AccessPoint() {
+  if (esp32Socket &&
+      (esp32Socket.readyState === WebSocket.OPEN || esp32Socket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  const ws = new WebSocket(ESP32_WS_URL);
+  esp32Socket = ws;
+
+  ws.on('open', () => {
+    esp32LastSeen = Date.now();
+    console.log(`[ESP32 AP] WebSocket connected: ${ESP32_WS_URL}`);
+    updateEsp32Status(true);
+    ws.send(JSON.stringify({ type: 'register', role: 'node_server' }));
+  });
+
+  ws.on('message', (messageBuffer) => {
+    try {
+      handleEsp32Payload(JSON.parse(messageBuffer.toString()), ws, ESP32_WS_URL);
+    } catch (err) {
+      console.warn('[ESP32 AP] Ignored invalid JSON packet');
+    }
+  });
+
+  ws.on('close', () => {
+    if (esp32Socket === ws) {
+      esp32Socket = null;
+      updateEsp32Status(false);
+      console.log('[ESP32 AP] Disconnected; waiting to reconnect...');
+    }
+    scheduleEsp32Reconnect();
+  });
+
+  ws.on('error', () => {
+    // The close handler schedules a retry. This is expected until the PC joins the ESP32 AP.
+  });
+}
+
 wss.on('connection', (ws, req) => {
   const remoteIp = req.socket.remoteAddress;
   let clientRole = 'unknown';
@@ -100,10 +184,9 @@ wss.on('connection', (ws, req) => {
           browserClients.add(ws);
           console.log(`[WS] Browser client connected (Total: ${browserClients.size})`);
           // Send immediate current ESP32 status to newly joined browser
-          const isEspConnected = esp32Socket !== null && esp32Socket.readyState === WebSocket.OPEN;
           ws.send(JSON.stringify({
             type: 'esp32_status',
-            connected: isEspConnected,
+            connected: isEsp32Connected(),
             timestamp: Date.now()
           }));
         }
@@ -112,36 +195,14 @@ wss.on('connection', (ws, req) => {
 
       // 2. Handle ESP32 button input (either explicitly typed or auto-detected by schema)
       if (payload.type === 'input' || ('forward' in payload && 'backward' in payload)) {
-        const rawInput = payload.type === 'input' ? payload.data : payload;
-        const sanitized = sanitizeInput(rawInput);
-
-        if (sanitized) {
-          // If not registered explicitly yet, auto-detect as ESP32
-          if (clientRole !== 'esp32') {
-            clientRole = 'esp32';
-            esp32Socket = ws;
-            console.log(`[WS] Auto-registered ESP32 from input payload (${remoteIp})`);
-            updateEsp32Status(true);
-          }
-          esp32LastSeen = Date.now();
-
-          // Relay input to all browsers
-          broadcastToBrowsers({
-            type: 'input',
-            source: 'esp32',
-            data: sanitized,
-            timestamp: Date.now()
-          });
-        }
+        if (clientRole !== 'esp32') clientRole = 'esp32';
+        handleEsp32Payload(payload, ws, `legacy inbound connection from ${remoteIp}`);
         return;
       }
 
       // 3. Heartbeat / ping from ESP32
       if (payload.type === 'ping') {
-        if (clientRole === 'esp32') {
-          esp32LastSeen = Date.now();
-        }
-        ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+        if (clientRole === 'esp32') handleEsp32Payload(payload, ws, remoteIp);
       }
 
     } catch (err) {
@@ -154,9 +215,12 @@ wss.on('connection', (ws, req) => {
       browserClients.delete(ws);
       console.log(`[WS] Browser client disconnected (Remaining: ${browserClients.size})`);
     } else if (clientRole === 'esp32' || ws === esp32Socket) {
-      esp32Socket = null;
-      console.log(`[WS] ESP32 disconnected (${remoteIp})`);
-      updateEsp32Status(false);
+      if (ws === esp32Socket) {
+        esp32Socket = null;
+        console.log(`[WS] ESP32 disconnected (${remoteIp})`);
+        updateEsp32Status(false);
+        scheduleEsp32Reconnect();
+      }
     }
   });
 
@@ -170,8 +234,11 @@ setInterval(() => {
   if (esp32Socket) {
     if (esp32Socket.readyState !== WebSocket.OPEN || (Date.now() - esp32LastSeen > ESP32_TIMEOUT_MS)) {
       console.log('[WS] ESP32 connection timed out (no heartbeat or packets)');
+      const staleSocket = esp32Socket;
       esp32Socket = null;
       updateEsp32Status(false);
+      staleSocket.terminate();
+      scheduleEsp32Reconnect();
     }
   }
 }, 1500);
@@ -180,14 +247,8 @@ server.listen(PORT, () => {
   console.log('========================================================');
   console.log(`🚌 ESP32 Cooperative Bus Parking Game Server Started!`);
   console.log(`🌐 Local Web Game URL: http://localhost:${PORT}`);
-  console.log('📡 Use the following IP for your ESP32 configuration:');
-  const ips = getLocalIpAddresses();
-  if (ips.length > 0) {
-    ips.forEach(item => {
-      console.log(`   👉 ${item.interface}: http://${item.address}:${PORT} (Set SERVER_IP="${item.address}")`);
-    });
-  } else {
-    console.log(`   👉 Set SERVER_IP to your computer's local Wi-Fi IP address`);
-  }
+  console.log('📡 ESP32 AP: connect this computer to Wi-Fi "hihi"');
+  console.log(`🔌 ESP32 WebSocket: ${ESP32_WS_URL}`);
   console.log('========================================================');
+  connectToEsp32AccessPoint();
 });
