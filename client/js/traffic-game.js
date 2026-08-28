@@ -65,13 +65,15 @@ class ObstacleDodgeGame {
     this.readyPlayers = this.createReadyState();
     this.previousReadyInputs = this.createReadyState();
     this.readyStartTimer = null;
+    this.restartHoldTimer = null;
+    this.restartHoldDuration = 3000;
     this.countdownInterval = null;
     this.countdownHideTimer = null;
 
     this.bindUI();
     this.inputManager.onChange((inputs) => {
       this.updateInputUI(inputs);
-      this.handleReadyInput(inputs);
+      this.handleReadyInput(this.inputManager.getReadyState());
     });
     this.network.connect();
     this.updateHUD();
@@ -119,6 +121,8 @@ class ObstacleDodgeGame {
   beginReadyCheck() {
     this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
+    window.clearTimeout(this.restartHoldTimer);
+    this.restartHoldTimer = null;
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
     this.state = 'RESETTING_READY';
@@ -138,7 +142,7 @@ class ObstacleDodgeGame {
     const risingActions = this.readyActions.filter((action) => inputs[action] && !this.previousReadyInputs[action]);
     if (this.state === 'GAMEOVER') {
       this.previousReadyInputs = { ...inputs };
-      if (risingActions.length) this.beginReadyCheck();
+      this.handleGameOverRestartHold(inputs, this.readyActions);
       return;
     }
     if (this.state !== 'READY' && this.state !== 'READY_COMPLETE') {
@@ -160,6 +164,23 @@ class ObstacleDodgeGame {
       this.state = 'READY_COMPLETE';
       this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
     }
+  }
+
+  handleGameOverRestartHold(inputs, actions) {
+    const heldCount = actions.filter((action) => inputs[action]).length;
+    if (heldCount < 2) {
+      window.clearTimeout(this.restartHoldTimer);
+      this.restartHoldTimer = null;
+      return;
+    }
+    if (this.restartHoldTimer !== null) return;
+    let timerId = null;
+    timerId = window.setTimeout(() => {
+      if (this.state !== 'GAMEOVER' || this.restartHoldTimer !== timerId) return;
+      this.restartHoldTimer = null;
+      this.beginReadyCheck();
+    }, this.restartHoldDuration);
+    this.restartHoldTimer = timerId;
   }
 
   updateReadyUI() {
@@ -1122,55 +1143,19 @@ class ObstacleDodgeGame {
   }
 
   drawCubeBlock(hazard) {
-    const ctx = this.ctx;
-    const scale = Math.min(hazard.width, hazard.height) / 68;
     const topColor = hazard.hit ? '#a33b22' : '#ffe77d';
     const frontColor = hazard.hit ? '#7c2d12' : '#ffd84d';
     const sideColor = hazard.hit ? '#5b1c0d' : '#d9a900';
-
-    ctx.save();
-    ctx.translate(hazard.x, hazard.y);
-    ctx.scale(scale, scale);
-    ctx.fillStyle = 'rgba(0,0,0,.25)';
-    ctx.beginPath(); ctx.ellipse(5, 32, 31, 12, 0, 0, Math.PI * 2); ctx.fill();
-
-    ctx.strokeStyle = '#28231f';
-    ctx.lineWidth = 4;
-    ctx.lineJoin = 'round';
-
-    ctx.fillStyle = topColor;
-    ctx.beginPath();
-    ctx.moveTo(-28, -24);
-    ctx.lineTo(-18, -34);
-    ctx.lineTo(34, -34);
-    ctx.lineTo(26, -24);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = sideColor;
-    ctx.beginPath();
-    ctx.moveTo(26, -24);
-    ctx.lineTo(34, -34);
-    ctx.lineTo(34, 18);
-    ctx.lineTo(26, 28);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = frontColor;
-    ctx.fillRect(-28, -24, 54, 52);
-    ctx.strokeRect(-28, -24, 54, 52);
-
-    ctx.fillStyle = '#28231f';
-    ctx.fillRect(-15, -10, 7, 8);
-    ctx.fillRect(8, -10, 7, 8);
-    ctx.fillStyle = hazard.hit ? '#f5a9c1' : '#ff6b35';
-    ctx.fillRect(-8, 2, 16, 9);
-    ctx.strokeStyle = '#28231f';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(-8, 2, 16, 9);
-    ctx.restore();
+    window.drawDodgeBoxCharacter(this.ctx, {
+      x: hazard.x,
+      y: hazard.y,
+      width: hazard.width,
+      height: hazard.height,
+      topColor,
+      frontColor,
+      sideColor,
+      mouthColor: hazard.hit ? '#f5a9c1' : '#ff6b35'
+    });
   }
 
   drawTrail() {

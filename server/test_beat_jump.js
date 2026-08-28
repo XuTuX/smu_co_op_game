@@ -12,6 +12,7 @@ const context = vm.createContext({
 });
 const source = fs.readFileSync(path.join(__dirname, '..', 'client/js/beat-jump.js'), 'utf8');
 const pageSource = fs.readFileSync(path.join(__dirname, '..', 'client/beat-jump.html'), 'utf8');
+const boxCharacterSource = fs.readFileSync(path.join(__dirname, '..', 'client/js/box-character.js'), 'utf8');
 vm.runInContext(`${source}\nwindow.TestBeatJumpGame = BeatJumpGame;`, context, { filename: 'beat-jump.js' });
 const GameClass = context.window.TestBeatJumpGame;
 
@@ -22,6 +23,10 @@ assert(!source.includes('CLEAR +1') && !source.includes('WATCH LEFT'), 'the play
 assert(!pageSource.includes('INPUT READY') && !pageSource.includes('TEAM SCORE'), 'the page should avoid decorative microcopy');
 assert(!source.includes('drawJumpOrder'), 'the playfield should not show 1-2-3-4 order markers');
 assert(!source.includes('오른쪽 ${count}개') && !source.includes('왼쪽 ${count}개'), 'warnings should not use verbose direction sentences');
+assert(pageSource.includes('js/box-character.js'), 'timing jump must load the shared obstacle-dodge box renderer');
+assert(source.includes('drawDodgeBoxCharacter'), 'timing-jump players must use the shared face-box design');
+assert(!source.includes('Four non-human mascot silhouettes'), 'the old custom mascot bodies must be removed');
+assert(boxCharacterSource.includes('frontColor') && boxCharacterSource.includes('mouthColor'), 'the shared box renderer must support player recoloring');
 
 function makeHarness() {
   const game = Object.create(GameClass.prototype);
@@ -101,12 +106,19 @@ assert.strictEqual(judgeGame.sharedLives, 1, 'damage should resume after invulne
 const timingGame = makeHarness();
 const timingObstacle = timingGame.makeObstacle('barrel', 1, 0, 1);
 const timingPlayer = timingGame.players[0];
-timingObstacle.x = timingPlayer.x - 40;
-assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle), false, 'judgment should wait until the obstacle is visually under the player');
-timingObstacle.x = timingPlayer.x - 10;
-assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle), true, 'judgment should occur close to the player center');
+timingObstacle.x = timingPlayer.x - timingObstacle.width / 2 - 31;
+assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle), false, 'judgment should wait until the obstacle leading edge reaches the player box');
+timingObstacle.x = timingPlayer.x - timingObstacle.width / 2 - 29;
+assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle), true, 'judgment should occur when the obstacle first visually touches the player box');
 timingPlayer.height = 55;
 assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), true, 'a clearly airborne player should pass the revised judgment');
+timingPlayer.height = 0;
+timingPlayer.velocity = 790;
+timingPlayer.lastJumpAt = timingGame.elapsed - 0.25;
+assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), true, 'a recent visible takeoff must receive jump grace instead of a false hit');
+timingPlayer.velocity = -100;
+timingPlayer.lastJumpAt = timingGame.elapsed - 0.4;
+assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), false, 'a grounded late jump must not clear the obstacle');
 
 const timeDifficultyGame = makeHarness();
 const openingSpeed = timeDifficultyGame.makeObstacle('cone', 1, 0, 1).speed;

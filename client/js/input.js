@@ -94,7 +94,11 @@ class InputManager {
       button.addEventListener('pointerup', release);
       button.addEventListener('pointercancel', release);
       button.addEventListener('lostpointercapture', release);
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        // A real pointer click has already been handled by pointerdown/up.
+        // Treating its follow-up click as a new pulse toggles ready twice,
+        // which was especially visible on the forward/backward buttons.
+        if (event.detail > 0) return;
         if (this.latchSteering && (action === 'left' || action === 'right')) return;
         const pulseMs = action === 'left' || action === 'right' ? 450 : 150;
         this.pulseAction(action, pulseMs);
@@ -220,6 +224,17 @@ class InputManager {
       backward: this.keyboardState.backward || this.pointerState.backward || this.pulseState.backward || this.esp32State.backward,
       left: this.keyboardState.left || this.pointerState.left || this.pulseState.left || this.esp32State.left,
       right: this.keyboardState.right || this.pointerState.right || this.pulseState.right || this.esp32State.right
+    };
+  }
+
+  // Ready checks only use real held inputs. Gameplay pulses created after a
+  // release must not look like a second press and cancel readiness.
+  getReadyState() {
+    return {
+      forward: this.keyboardState.forward || this.pointerState.forward || this.esp32State.forward,
+      backward: this.keyboardState.backward || this.pointerState.backward || this.esp32State.backward,
+      left: this.keyboardState.left || this.pointerState.left || this.esp32State.left,
+      right: this.keyboardState.right || this.pointerState.right || this.esp32State.right
     };
   }
 

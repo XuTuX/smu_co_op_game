@@ -59,6 +59,8 @@ class TeamJumpRopeGame {
     this.previousReadyInputs = this.createReadyState();
     this.previousPlayInputs = this.createReadyState();
     this.readyStartTimer = null;
+    this.restartHoldTimer = null;
+    this.restartHoldDuration = 3000;
     this.countdownInterval = null;
     this.countdownHideTimer = null;
     this.calloutTimer = null;
@@ -67,7 +69,7 @@ class TeamJumpRopeGame {
     this.bindUI();
     this.inputManager.onChange((inputs) => {
       this.updateInputUI(inputs);
-      this.handleReadyInput(inputs);
+      this.handleReadyInput(this.inputManager.getReadyState());
       if (this.state === 'PLAYING') this.handleJumpInput(inputs);
       else this.previousPlayInputs = { ...inputs };
     });
@@ -106,6 +108,8 @@ class TeamJumpRopeGame {
   beginReadyCheck() {
     this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
+    window.clearTimeout(this.restartHoldTimer);
+    this.restartHoldTimer = null;
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
     window.clearTimeout(this.calloutTimer);
@@ -128,7 +132,7 @@ class TeamJumpRopeGame {
     const risingActions = this.actions.filter((action) => inputs[action] && !this.previousReadyInputs[action]);
     if (this.state === 'GAMEOVER') {
       this.previousReadyInputs = { ...inputs };
-      if (risingActions.length) this.beginReadyCheck();
+      this.handleGameOverRestartHold(inputs, this.actions);
       return;
     }
     if (this.state !== 'READY' && this.state !== 'READY_COMPLETE') {
@@ -148,6 +152,23 @@ class TeamJumpRopeGame {
       this.state = 'READY_COMPLETE';
       this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
     }
+  }
+
+  handleGameOverRestartHold(inputs, actions) {
+    const heldCount = actions.filter((action) => inputs[action]).length;
+    if (heldCount < 2) {
+      window.clearTimeout(this.restartHoldTimer);
+      this.restartHoldTimer = null;
+      return;
+    }
+    if (this.restartHoldTimer !== null) return;
+    let timerId = null;
+    timerId = window.setTimeout(() => {
+      if (this.state !== 'GAMEOVER' || this.restartHoldTimer !== timerId) return;
+      this.restartHoldTimer = null;
+      this.beginReadyCheck();
+    }, this.restartHoldDuration);
+    this.restartHoldTimer = timerId;
   }
 
   updateReadyUI() {

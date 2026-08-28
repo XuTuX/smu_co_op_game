@@ -11,10 +11,10 @@ class BeatJumpGame {
     this.network = new NetworkClient(this.inputManager, (connected) => this.updateHardwareStatus(connected));
     this.actions = ['forward', 'backward', 'left', 'right'];
     this.playerMeta = [
-      { action: 'forward', label: 'P1', key: 'W', color: '#facc15', dark: '#a16207' },
-      { action: 'backward', label: 'P2', key: 'S', color: '#fb7185', dark: '#be123c' },
-      { action: 'left', label: 'P3', key: 'A', color: '#38bdf8', dark: '#0369a1' },
-      { action: 'right', label: 'P4', key: 'D', color: '#4ade80', dark: '#15803d' }
+      { action: 'forward', label: 'P1', key: 'W', color: '#facc15', top: '#fde68a', dark: '#ca8a04' },
+      { action: 'backward', label: 'P2', key: 'S', color: '#fb7185', top: '#fda4af', dark: '#be123c' },
+      { action: 'left', label: 'P3', key: 'A', color: '#38bdf8', top: '#7dd3fc', dark: '#0284c7' },
+      { action: 'right', label: 'P4', key: 'D', color: '#4ade80', top: '#86efac', dark: '#16a34a' }
     ];
     this.playerXs = [500, 700, 900, 1100];
     this.groundY = 680;
@@ -34,6 +34,8 @@ class BeatJumpGame {
     this.previousReadyInputs = this.createInputState();
     this.previousPlayInputs = this.createInputState();
     this.readyStartTimer = null;
+    this.restartHoldTimer = null;
+    this.restartHoldDuration = 3000;
     this.countdownInterval = null;
     this.countdownHideTimer = null;
     this.directionHideTimer = null;
@@ -41,7 +43,7 @@ class BeatJumpGame {
     this.bindUI();
     this.inputManager.onChange((inputs) => {
       this.updateInputUI(inputs);
-      this.handleReadyInput(inputs);
+      this.handleReadyInput(this.inputManager.getReadyState());
       if (this.state === 'PLAYING') this.handleJumpInput(inputs);
       else this.previousPlayInputs = { ...inputs };
     });
@@ -73,6 +75,8 @@ class BeatJumpGame {
   beginReadyCheck() {
     this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
+    window.clearTimeout(this.restartHoldTimer);
+    this.restartHoldTimer = null;
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
     window.clearTimeout(this.directionHideTimer);
@@ -93,7 +97,7 @@ class BeatJumpGame {
     const risingActions = this.actions.filter((action) => inputs[action] && !this.previousReadyInputs[action]);
     if (this.state === 'GAMEOVER') {
       this.previousReadyInputs = { ...inputs };
-      if (risingActions.length) this.beginReadyCheck();
+      this.handleGameOverRestartHold(inputs, this.actions);
       return;
     }
     if (this.state !== 'READY' && this.state !== 'READY_COMPLETE') {
@@ -113,6 +117,23 @@ class BeatJumpGame {
       this.state = 'READY_COMPLETE';
       this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
     }
+  }
+
+  handleGameOverRestartHold(inputs, actions) {
+    const heldCount = actions.filter((action) => inputs[action]).length;
+    if (heldCount < 2) {
+      window.clearTimeout(this.restartHoldTimer);
+      this.restartHoldTimer = null;
+      return;
+    }
+    if (this.restartHoldTimer !== null) return;
+    let timerId = null;
+    timerId = window.setTimeout(() => {
+      if (this.state !== 'GAMEOVER' || this.restartHoldTimer !== timerId) return;
+      this.restartHoldTimer = null;
+      this.beginReadyCheck();
+    }, this.restartHoldDuration);
+    this.restartHoldTimer = timerId;
   }
 
   updateReadyUI() {
@@ -345,16 +366,19 @@ class BeatJumpGame {
   }
 
   shouldJudgeObstacle(player, obstacle) {
-    const centerTolerance = 12;
+    // Judge when the obstacle's leading edge reaches the box character, not
+    // after its center has already passed underneath. This keeps the visual
+    // contact point and the gameplay result in sync.
+    const playerHalfWidth = 30;
     return obstacle.direction > 0
-      ? obstacle.x >= player.x - centerTolerance
-      : obstacle.x <= player.x + centerTolerance;
+      ? obstacle.x + obstacle.width / 2 >= player.x - playerHalfWidth
+      : obstacle.x - obstacle.width / 2 <= player.x + playerHalfWidth;
   }
 
   isSuccessfulJump(player, obstacle) {
-    const requiredHeight = Math.min(72, Math.max(38, obstacle.height * 0.62));
+    const requiredHeight = Math.min(64, Math.max(30, obstacle.height * 0.52));
     const timeSinceJump = this.elapsed - player.lastJumpAt;
-    const takeoffGrace = timeSinceJump >= 0 && timeSinceJump <= 0.2 && player.velocity > 0;
+    const takeoffGrace = timeSinceJump >= 0 && timeSinceJump <= 0.28 && player.velocity > 0;
     return player.height >= requiredHeight || takeoffGrace;
   }
 
@@ -469,60 +493,26 @@ class BeatJumpGame {
     const y = this.groundY - player.height;
     const pulse = player.flash > 0 && Math.floor(player.flash * 16) % 2 === 0;
     const squash = player.height === 0 ? 1 - player.squash * 0.13 : 1.04;
+
     ctx.save();
-    ctx.translate(player.x, y);
     ctx.fillStyle = 'rgba(5,20,28,.35)';
-    ctx.beginPath(); ctx.ellipse(0, player.height, 54 - Math.min(27, player.height * .13), 12, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.scale(1 + (1 - squash) * .7, squash);
-    ctx.strokeStyle = pulse ? '#fff' : '#15202b';
-    ctx.lineWidth = 7;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // Four non-human mascot silhouettes: antenna, ears, horns, and leaf.
-    ctx.fillStyle = player.color;
-    if (index === 0) {
-      ctx.beginPath(); ctx.moveTo(0,-151); ctx.lineTo(0,-181); ctx.stroke();
-      ctx.beginPath(); ctx.arc(0,-190,11,0,Math.PI*2); ctx.fill(); ctx.stroke();
-    } else if (index === 1) {
-      ctx.beginPath(); ctx.moveTo(-42,-139); ctx.lineTo(-26,-181); ctx.lineTo(-7,-145); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(42,-139); ctx.lineTo(26,-181); ctx.lineTo(7,-145); ctx.closePath(); ctx.fill(); ctx.stroke();
-    } else if (index === 2) {
-      ctx.beginPath(); ctx.moveTo(-35,-143); ctx.quadraticCurveTo(-59,-183,-20,-171); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(35,-143); ctx.quadraticCurveTo(59,-183,20,-171); ctx.stroke();
-    } else {
-      ctx.beginPath(); ctx.moveTo(4,-151); ctx.quadraticCurveTo(42,-190,48,-153); ctx.quadraticCurveTo(27,-145,4,-151); ctx.fill(); ctx.stroke();
-    }
-
     ctx.beginPath();
-    ctx.moveTo(-48,-22);
-    ctx.bezierCurveTo(-68,-65,-62,-132,-32,-151);
-    ctx.bezierCurveTo(-12,-165,12,-165,32,-151);
-    ctx.bezierCurveTo(62,-132,68,-65,48,-22);
-    ctx.quadraticCurveTo(28,5,0,-2);
-    ctx.quadraticCurveTo(-28,5,-48,-22);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-
-    // Side nubs and springy feet keep the creature readable while jumping.
-    const lift = player.height > 12 ? 12 : 0;
-    ctx.beginPath(); ctx.ellipse(-59,-70-lift,18,12,-.65,0,Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(59,-70-lift,18,12,.65,0,Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(-25,-2-lift,24,12,-.12,0,Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(25,-2-lift,24,12,.12,0,Math.PI*2); ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.ellipse(-18,-105,13,17,0,0,Math.PI*2); ctx.ellipse(18,-105,13,17,0,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#15202b';
-    ctx.beginPath(); ctx.arc(-16,-102,5,0,Math.PI*2); ctx.arc(16,-102,5,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(0,-79,13,.12,Math.PI-.12); ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.roundRect(-28,-63,56,34,12); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = player.dark;
-    ctx.font = '950 20px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(player.label,0,-39);
+    ctx.ellipse(player.x, this.groundY + 4, 48 - Math.min(25, player.height * .12), 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(player.x, y);
+    ctx.scale(1 + (1 - squash) * .7, squash);
+    window.drawDodgeBoxCharacter(ctx, {
+      x: 0,
+      y: -45,
+      width: 104,
+      height: 104,
+      topColor: player.top,
+      frontColor: player.color,
+      sideColor: player.dark,
+      mouthColor: '#ffffff',
+      outlineColor: pulse ? '#ffffff' : '#28231f',
+      drawShadow: false
+    });
     ctx.restore();
     this.canvas.dataset[`p${index + 1}Height`] = player.height.toFixed(1);
     this.canvas.dataset[`p${index + 1}Lives`] = String(this.sharedLives);

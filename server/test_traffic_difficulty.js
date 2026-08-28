@@ -8,6 +8,9 @@ const vm = require('vm');
 
 const sourcePath = path.join(__dirname, '..', 'client', 'js', 'traffic-game.js');
 const source = `${fs.readFileSync(sourcePath, 'utf8')}\nwindow.ObstacleDodgeGame = ObstacleDodgeGame;`;
+const trafficPage = fs.readFileSync(path.join(__dirname, '..', 'client', 'traffic.html'), 'utf8');
+assert(trafficPage.includes('js/box-character.js'), 'obstacle dodge must load the shared face-box renderer');
+assert(source.includes('drawDodgeBoxCharacter'), 'obstacle hazards must keep using the shared face-box design');
 assert(!source.includes("endGame('TIME_UP')"), 'obstacle dodge must not end because of elapsed time or score');
 assert(source.includes('this.timeRemaining = this.elapsed'), 'the HUD should show count-up survival time');
 assert(source.includes('if (this.lives <= 0) this.endGame'), 'obstacle dodge should end only after all team lives are gone');

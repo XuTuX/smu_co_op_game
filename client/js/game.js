@@ -35,6 +35,8 @@ class Game {
     this.readyPlayers = this.createReadyState();
     this.previousReadyInputs = this.createReadyState();
     this.readyStartTimer = null;
+    this.restartHoldTimer = null;
+    this.restartHoldDuration = 3000;
     this.countdownInterval = null;
     this.countdownHideTimer = null;
 
@@ -51,7 +53,7 @@ class Game {
     // Subscribe input changes to update HUD live button indicators
     this.inputManager.onChange((combined) => {
       this.ui.updateButtonIndicators(combined);
-      this.handleReadyInput(combined);
+      this.handleReadyInput(this.inputManager.getReadyState());
     });
 
     // Initialize UI callbacks
@@ -91,6 +93,8 @@ class Game {
   beginReadyCheck() {
     this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
+    window.clearTimeout(this.restartHoldTimer);
+    this.restartHoldTimer = null;
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
     this.state = 'RESETTING_READY';
@@ -112,7 +116,7 @@ class Game {
 
     if (this.state === 'GAMEOVER') {
       this.previousReadyInputs = { ...inputs };
-      if (risingActions.length) this.beginReadyCheck();
+      this.handleGameOverRestartHold(inputs, this.readyActions);
       return;
     }
     if (this.state !== 'READY' && this.state !== 'READY_COMPLETE') {
@@ -134,6 +138,23 @@ class Game {
       this.state = 'READY_COMPLETE';
       this.readyStartTimer = window.setTimeout(() => this.startCountdown(), 450);
     }
+  }
+
+  handleGameOverRestartHold(inputs, actions) {
+    const heldCount = actions.filter((action) => inputs[action]).length;
+    if (heldCount < 2) {
+      window.clearTimeout(this.restartHoldTimer);
+      this.restartHoldTimer = null;
+      return;
+    }
+    if (this.restartHoldTimer !== null) return;
+    let timerId = null;
+    timerId = window.setTimeout(() => {
+      if (this.state !== 'GAMEOVER' || this.restartHoldTimer !== timerId) return;
+      this.restartHoldTimer = null;
+      this.beginReadyCheck();
+    }, this.restartHoldDuration);
+    this.restartHoldTimer = timerId;
   }
 
   updateReadyUI() {
