@@ -34,6 +34,7 @@ load('client/js/input.js', 'window.TestInputManager = InputManager;');
 load('client/js/game.js', 'window.TestParkingGame = Game;');
 load('client/js/traffic-game.js', 'window.TestTrafficGame = ObstacleDodgeGame;');
 load('client/js/jump-rope.js', 'window.TestJumpRopeGame = TeamJumpRopeGame;');
+load('client/js/beat-jump.js', 'window.TestBeatJumpGame = BeatJumpGame;');
 
 const ACTIONS = ['forward', 'backward', 'left', 'right'];
 
@@ -99,5 +100,7 @@ verifySequentialReady(context.window.TestTrafficGame, 'Traffic');
 verifySimultaneousReady(context.window.TestTrafficGame, 'Traffic');
 verifySequentialReady(context.window.TestJumpRopeGame, 'Jump rope');
 verifySimultaneousReady(context.window.TestJumpRopeGame, 'Jump rope');
+verifySequentialReady(context.window.TestBeatJumpGame, 'Beat jump');
+verifySimultaneousReady(context.window.TestBeatJumpGame, 'Beat jump');
 
-console.log('✅ READY CHECK TEST PASSED: all three games accept sequential and simultaneous ESP32 button readiness');
+console.log('✅ READY CHECK TEST PASSED: all four games accept sequential and simultaneous ESP32 button readiness');

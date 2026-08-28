@@ -14,16 +14,23 @@
   left: 50%;
   z-index: 25;
   transform: translateX(-50%) rotate(-3deg);
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--yellow);
-  box-shadow: 5px 6px 0 var(--ink);
-  padding: 8px 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 4px 8px;
+  color: #fff;
   font-size: clamp(20px, 3vw, 38px);
   font-weight: 950;
   letter-spacing: .06em;
+  text-shadow: 0 3px 0 #161228, 0 0 14px rgba(0,0,0,.75);
   pointer-events: none;
 }
+.rope-command-color { display: inline; padding: 0; border: 0; background: transparent; }
+.rope-command-color.yellow { color: #facc15; }
+.rope-command-color.red { color: #fb7185; }
+.rope-command-color.blue { color: #38bdf8; }
+.rope-command-color.green { color: #4ade80; }
 
 .rope-rhythm-hud {
   position: absolute;
@@ -41,6 +48,8 @@
   pointer-events: none;
   transition: background 100ms ease, transform 100ms ease;
 }
+.rope-rhythm-hud { display: none; }
+.rope-page.is-playing .rope-callout { top: 30%; }
 .rope-rhythm-copy { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
 .rope-rhythm-copy span { grid-column: 1 / -1; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 9px; font-weight: 950; letter-spacing: .12em; }
 .rope-rhythm-copy strong { font-size: clamp(15px, 2vw, 23px); line-height: 1; }

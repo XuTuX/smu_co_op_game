@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#8b5cf6">
-  <title>Bus Co-op Club — 4인 타이밍 점프</title>
+  <title>Bus Co-op Club — 4인 단체 줄넘기</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="jump-rope.css">
 </head>
@@ -30,46 +30,47 @@
     <nav class="mode-switch" aria-label="게임 선택">
       <a class="mode-link" href="index.html"><span>01</span> 버스 주차</a>
       <a class="mode-link" href="traffic.html"><span>02</span> 장애물 피하기</a>
-      <a class="mode-link active rope-active" href="jump-rope.html"><span>03</span> 타이밍 점프</a>
-      <a class="mode-link" href="button-test.html"><span>04</span> 버튼 4개 연습</a>
+      <a class="mode-link active rope-active" href="jump-rope.html"><span>03</span> 단체 줄넘기</a>
+      <a class="mode-link" href="beat-jump.html"><span>04</span> 타이밍 점프</a>
+      <a class="mode-link" href="button-test.html"><span>05</span> 버튼 4개 연습</a>
     </nav>
 
     <main class="game-card rope-card">
       <div class="game-meta-row">
-        <div class="game-card-label"><span aria-hidden="true">➜</span> BEAT JUMP RUN</div>
+        <div class="game-card-label"><span aria-hidden="true">∞</span> TEAM JUMP ROPE</div>
       </div>
 
-      <section class="stats-row rope-stats" aria-label="타이밍 점프 게임 상태">
+      <section class="stats-row rope-stats" aria-label="단체 줄넘기 게임 상태">
         <div class="stat-block rope-score-card">
           <span class="stat-label">TEAM SCORE</span>
           <strong id="rope-score">0</strong>
           <span class="stat-note">POINTS · <b id="rope-multiplier">×1</b></span>
         </div>
         <div class="stat-copy">
-          <h2>좌우에서 달려오면<br><span>점프는 각자!</span></h2>
-          <p>딱 · 딱 · 딱 예고 후 자기 앞에 올 때 점프</p>
+          <h2>한 줄에서 뛰어도<br><span>점프는 각자!</span></h2>
+          <p>전원 4회 → 혼자 → 둘이 → 두 줄 → 느리게 → 빠르게</p>
         </div>
         <div class="stat-block rope-time-card">
-          <span class="stat-label">TIME LEFT</span>
-          <div><strong id="rope-time">60</strong><span class="stat-unit">SEC</span></div>
-          <span class="stat-note">KEEP THE RHYTHM</span>
+          <span class="stat-label">ROUND</span>
+          <div><strong id="rope-time">0</strong><span class="stat-unit">PASS</span></div>
+          <span class="stat-note">UNTIL EVERYONE IS OUT</span>
         </div>
       </section>
 
-      <section class="canvas-frame rope-frame" aria-label="좌우에서 오는 장애물을 네 캐릭터가 각자 피하는 타이밍 점프 게임 화면">
+      <section class="canvas-frame rope-frame" aria-label="네 캐릭터가 각자 점프하는 단체 줄넘기 게임 화면">
         <canvas id="ropeCanvas"></canvas>
         <div id="rope-input-status" class="input-status">INPUT READY</div>
         <div id="rope-callout" class="rope-callout hidden" aria-live="assertive">JUMP!</div>
 
         <div id="rope-rhythm-hud" class="rope-rhythm-hud" data-phase="safe" aria-live="polite">
           <div class="rope-rhythm-copy">
-            <span id="rope-tempo-label">LEVEL 1 · WARM UP</span>
-            <strong id="rope-beat-text">다음 장애물 준비</strong>
+            <span id="rope-tempo-label">TEMPO 1 · WARM UP</span>
+            <strong id="rope-beat-text">줄이 돌아오는 중</strong>
             <b id="rope-beat-time">1.0s</b>
           </div>
           <div class="rope-beat-track" aria-hidden="true"><i id="rope-beat-bar"></i><em></em></div>
           <div class="rope-bonus-row">
-            <span>PERFECT COMBO <b id="rope-combo">×0</b></span>
+            <span>TEAM COMBO <b id="rope-combo">×0</b></span>
             <span>FEVER <b id="rope-fever-text">0 / 3</b></span>
           </div>
           <div class="rope-fever-track" aria-hidden="true"><i id="rope-fever-bar"></i></div>
@@ -88,9 +89,9 @@
 
         <div id="rope-start-modal" class="overlay modal-overlay ready-check-modal">
           <div class="modal-card rope-modal">
-            <div class="modal-badge rope-badge">BEAT JUMP</div>
-            <h2 class="modal-title">좌우에서 달려오는<br><span>4인 타이밍 점프</span></h2>
-            <p class="modal-subtitle">딱 · 딱 · 딱 세 번의 예고와 방향 표시를 보세요. 장애물이 자기 캐릭터 앞에 왔을 때 각자 버튼으로 점프합니다.</p>
+            <div class="modal-badge rope-badge">TEAM ROPE</div>
+            <h2 class="modal-title">4명이 각자 뛰는<br><span>단체 줄넘기</span></h2>
+            <p class="modal-subtitle">처음 4회는 전원이 뜁니다. 이후 색깔 한 명, 색깔 두 명, 두 줄 전원 점프, 느린 템포, 빠른 템포 순서로 반복됩니다.</p>
             <div class="role-grid">
               <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
               <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
@@ -103,7 +104,7 @@
 
         <div id="rope-gameover-modal" class="overlay modal-overlay hidden">
           <div class="modal-card gameover-card">
-            <div id="rope-gameover-badge" class="modal-badge rope-badge">TIME'S UP!</div>
+            <div id="rope-gameover-badge" class="modal-badge rope-badge">TEAM OUT</div>
             <h2 id="rope-gameover-message" class="modal-title">우리 팀 호흡이 좋아요!</h2>
             <div class="score-summary rope-summary">
               <div class="summary-box"><span class="summary-label">TEAM SCORE</span><strong id="rope-final-score">0</strong></div>

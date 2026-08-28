@@ -30,11 +30,15 @@ function makeHarness() {
   game.elapsed = 0;
   game.score = 0;
   game.perfectCount = 0;
+  game.roundCount = 0;
+  game.tempoFactor = 1;
+  game.commandTargets = null;
+  game.doubleRopeMode = false;
+  game.modeLabel = '전원 점프';
   game.combo = 0;
   game.bestCombo = 0;
   game.feverGauge = 0;
   game.feverRemaining = 0;
-  game.doubleRopeRemaining = 0;
   game.feedbacks = [];
   game.particles = [];
   game.shake = 0;
@@ -84,7 +88,7 @@ assert.strictEqual(passGame.perfectCount, 1, 'all four clearing together should 
 
 const speedGame = makeHarness();
 const startingSpeed = speedGame.getRopeSpeed();
-speedGame.elapsed = 60;
+speedGame.roundCount = 35;
 assert(speedGame.getRopeSpeed() > startingSpeed, 'rope speed should increase during the round');
 
 const geometryGame = makeHarness();
@@ -95,7 +99,7 @@ assert.strictEqual(bottomGeometry.controlY, 934, 'quadratic control point must c
 assert(Math.abs(bottomGeometry.midpointY - geometryGame.groundY) <= 4, 'rope and player feet must meet visually');
 
 const eventGame = makeHarness();
-eventGame.doubleRopeRemaining = 5;
+eventGame.doubleRopeMode = true;
 assert.deepStrictEqual(Array.from(eventGame.getRopeOffsets()), [0, Math.PI], 'double-rope event should render and judge two ropes');
 
 const feverGame = makeHarness();
@@ -108,4 +112,40 @@ assert.strictEqual(feverGame.feverRemaining, 7, 'three perfect clears should act
 feverGame.resolveRopePass();
 assert.strictEqual(feverGame.score, 20, 'fever should double all four clear points');
 
-console.log('✅ JUMP ROPE TEST PASSED: floor sync, double ropes, combo fever, lives, and scoring work');
+const commandGame = makeHarness();
+commandGame.roundCount = 4;
+commandGame.applyRoundMode(false);
+assert.deepStrictEqual(Array.from(commandGame.commandTargets), ['backward'], 'round five should command red-only jump');
+assert(commandGame.getModeHtml().includes('rope-command-color red'), 'solo instruction should color the red name without a generic all-jump message');
+assert(commandGame.getModeHtml().includes('만 점프!'), 'solo instruction should explicitly say only that color jumps');
+commandGame.players[1].height = 100;
+commandGame.resolveRopePass();
+assert.strictEqual(commandGame.players[1].clears, 1, 'red should score when red-only is commanded');
+assert.deepStrictEqual(commandGame.players.map((player) => player.lives), [3, 3, 3, 3], 'players who correctly stay grounded should keep their lives');
+
+const sequenceGame = makeHarness();
+for (let round = 0; round < 4; round++) {
+  sequenceGame.roundCount = round;
+  sequenceGame.applyRoundMode(false);
+  assert.strictEqual(sequenceGame.commandTargets, null, 'the first four passes should always command everyone');
+  assert.strictEqual(sequenceGame.doubleRopeMode, false, 'the first four passes should use one rope');
+}
+sequenceGame.roundCount = 5;
+sequenceGame.applyRoundMode(false);
+assert.deepStrictEqual(Array.from(sequenceGame.commandTargets), ['forward', 'backward'], 'the pair command should follow the solo command');
+assert(sequenceGame.getModeHtml().includes('yellow') && sequenceGame.getModeHtml().includes('red'), 'pair instruction should color both requested names');
+sequenceGame.roundCount = 6;
+sequenceGame.applyRoundMode(false);
+assert.strictEqual(sequenceGame.doubleRopeMode, true, 'two-rope mode should follow the two color commands');
+assert.strictEqual(sequenceGame.commandTargets, null, 'two-rope mode must always command everyone');
+sequenceGame.roundCount = 8;
+sequenceGame.applyRoundMode(false);
+assert.strictEqual(sequenceGame.tempoFactor, 0.68, 'slow tempo should follow two-rope mode');
+sequenceGame.roundCount = 10;
+sequenceGame.applyRoundMode(false);
+assert.strictEqual(sequenceGame.tempoFactor, 1.45, 'fast tempo should follow slow tempo');
+sequenceGame.roundCount = 12;
+sequenceGame.applyRoundMode(false);
+assert.deepStrictEqual(Array.from(sequenceGame.commandTargets), ['left'], 'the next cycle should rotate the solo color');
+
+console.log('✅ JUMP ROPE TEST PASSED: four all-jumps, colored solo/pair commands, all-player double ropes, slow/fast tempo, and lives work');

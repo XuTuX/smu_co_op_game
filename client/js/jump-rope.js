@@ -36,14 +36,15 @@ class TeamJumpRopeGame {
     this.timeRemaining = this.gameDuration;
     this.score = 0;
     this.perfectCount = 0;
+    this.roundCount = 0;
+    this.tempoFactor = 1;
+    this.commandTargets = null;
+    this.doubleRopeMode = false;
+    this.modeLabel = '전원 점프';
     this.combo = 0;
     this.bestCombo = 0;
     this.feverGauge = 0;
     this.feverRemaining = 0;
-    this.doubleRopeRemaining = 0;
-    this.doubleRopeEventIndex = 0;
-    this.doubleRopeStarts = [18, 40];
-    this.doubleRopeDurations = [7, 8];
     this.feedbacks = [];
     this.particles = [];
     this.shake = 0;
@@ -193,17 +194,21 @@ class TeamJumpRopeGame {
     this.timeRemaining = this.gameDuration;
     this.score = 0;
     this.perfectCount = 0;
+    this.roundCount = 0;
+    this.tempoFactor = 1;
+    this.commandTargets = null;
+    this.doubleRopeMode = false;
+    this.modeLabel = '전원 점프';
     this.combo = 0;
     this.bestCombo = 0;
     this.feverGauge = 0;
     this.feverRemaining = 0;
-    this.doubleRopeRemaining = 0;
-    this.doubleRopeEventIndex = 0;
     this.feedbacks = [];
     this.particles = [];
     this.shake = 0;
     this.hitFreeze = 0;
     this.passPulse = 0;
+    this.applyRoundMode(false);
     this.inputManager.resetAll();
     this.previousPlayInputs = this.createReadyState();
     this.updateHUD();
@@ -244,13 +249,13 @@ class TeamJumpRopeGame {
   }
 
   getRopeSpeed() {
-    const progress = Math.min(1, this.elapsed / this.gameDuration);
-    const rotationsPerSecond = 0.44 + progress * 0.24;
+    const progress = Math.min(1, this.roundCount / 35);
+    const rotationsPerSecond = (0.44 + progress * 0.18) * this.tempoFactor;
     return Math.PI * 2 * rotationsPerSecond;
   }
 
   getRopeOffsets() {
-    return this.doubleRopeRemaining > 0 ? [0, Math.PI] : [0];
+    return this.doubleRopeMode ? [0, Math.PI] : [0];
   }
 
   getSecondsToNextPass() {
@@ -279,19 +284,9 @@ class TeamJumpRopeGame {
     }
 
     this.elapsed += dt;
-    this.timeRemaining = Math.max(0, this.gameDuration - this.elapsed);
     this.passPulse = Math.max(0, this.passPulse - dt * 2.8);
     this.feverRemaining = Math.max(0, this.feverRemaining - dt);
-    this.doubleRopeRemaining = Math.max(0, this.doubleRopeRemaining - dt);
     this.shake = Math.max(0, this.shake - dt * 25);
-
-    const nextDoubleStart = this.doubleRopeStarts[this.doubleRopeEventIndex];
-    if (nextDoubleStart !== undefined && this.elapsed >= nextDoubleStart) {
-      this.doubleRopeRemaining = this.doubleRopeDurations[this.doubleRopeEventIndex];
-      this.doubleRopeEventIndex++;
-      this.showCallout('DOUBLE ROPE!', 1100);
-      this.soundEngine.playLaser();
-    }
 
     for (const player of this.players) {
       player.flash = Math.max(0, player.flash - dt);
@@ -319,40 +314,36 @@ class TeamJumpRopeGame {
     this.updateEffects(dt);
     this.updateJumpCallout();
     this.updateHUD();
-    if (this.timeRemaining <= 0) this.endGame('TIME_UP');
   }
 
   resolveRopePass() {
     const activePlayers = this.players.filter((player) => !player.eliminated);
     if (!activePlayers.length) return;
     let allClear = true;
-    const missedLabels = [];
     const multiplier = this.feverRemaining > 0 ? 2 : 1;
     for (const player of activePlayers) {
-      // A press made just as the visible rope touches the floor is valid even
-      // before the first physics frame has lifted the sprite very far.
       const onBeatJump = this.elapsed - player.lastJumpAt <= 0.16;
-      if (player.height >= this.clearHeight || onBeatJump) {
+      const jumped = player.height >= this.clearHeight || onBeatJump;
+      const shouldJump = this.commandTargets === null || this.commandTargets.includes(player.action);
+      if (shouldJump && jumped) {
         player.clears++;
         this.score += multiplier;
         player.flash = 0.25;
         this.addFeedback(player, `CLEAR +${multiplier}`, '#a7f3d0');
         this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 7);
-      } else {
+      } else if ((shouldJump && !jumped) || (!shouldJump && jumped)) {
         allClear = false;
-        missedLabels.push(player.label);
         player.lives--;
         player.misses++;
         player.stunned = 0.75;
         player.flash = 0.75;
         player.eliminated = player.lives <= 0;
-        this.addFeedback(player, 'MISS!', '#fb7185');
         this.spawnBurst(player.x, this.groundY - 32, '#fb7185', 16);
       }
     }
+    this.roundCount++;
     this.passPulse = 1;
-    const fullTeamPerfect = allClear && activePlayers.length === 4 && this.players.every((player) => !player.eliminated);
-    if (fullTeamPerfect) {
+    if (allClear) {
       this.perfectCount++;
       this.combo++;
       this.bestCombo = Math.max(this.bestCombo, this.combo);
@@ -360,21 +351,97 @@ class TeamJumpRopeGame {
       if (this.feverGauge >= 3) {
         this.feverGauge = 0;
         this.feverRemaining = 7;
-        this.showCallout('FEVER! SCORE ×2', 1000);
-      } else {
-        this.showCallout(`PERFECT COMBO ×${this.combo}`, 700);
       }
       this.soundEngine.playSuccess();
     } else {
       this.combo = 0;
-      if (!allClear) {
-        this.showCallout(`${missedLabels.join(' · ')} MISS!`, 850);
-        this.soundEngine.playCrash();
-        this.shake = 13;
-        this.hitFreeze = 0.1;
+      this.soundEngine.playCrash();
+      this.shake = 13;
+      this.hitFreeze = 0.1;
+    }
+    if (this.players.every((player) => player.eliminated)) {
+      this.endGame('ALL_OUT');
+      return;
+    }
+    this.applyRoundMode(true);
+  }
+
+  applyRoundMode(showMessage = true) {
+    const activeActions = this.players.filter((player) => !player.eliminated).map((player) => player.action);
+    this.commandTargets = null;
+    this.doubleRopeMode = false;
+    this.tempoFactor = 1;
+    this.modeLabel = '전원 점프';
+
+    if (this.roundCount >= 4) {
+      const phase = (this.roundCount - 4) % 8;
+      const cycle = Math.floor((this.roundCount - 4) / 8);
+      const soloOrder = ['backward', 'left', 'forward', 'right'];
+      const pairOrder = [
+        ['forward', 'backward'],
+        ['left', 'right'],
+        ['backward', 'left'],
+        ['forward', 'right']
+      ];
+
+      if (phase === 0) {
+        this.commandTargets = [soloOrder[cycle % soloOrder.length]];
+        this.modeLabel = '혼자 점프';
+      } else if (phase === 1) {
+        this.commandTargets = pairOrder[cycle % pairOrder.length];
+        this.modeLabel = '둘이 점프';
+      } else if (phase === 2 || phase === 3) {
+        this.doubleRopeMode = true;
+        this.commandTargets = null;
+        this.modeLabel = '두 줄 · 전원 점프';
+      } else if (phase === 4 || phase === 5) {
+        this.tempoFactor = 0.68;
+        this.modeLabel = '느린 템포 · 전원 점프';
+      } else {
+        this.tempoFactor = 1.45;
+        this.modeLabel = '빠른 템포 · 전원 점프';
       }
     }
-    if (this.players.every((player) => player.eliminated)) this.endGame('ALL_OUT');
+
+    if (this.commandTargets) {
+      this.commandTargets = this.commandTargets.filter((action) => activeActions.includes(action));
+      if (!this.commandTargets.length) this.commandTargets = null;
+    }
+    if (showMessage && this.commandTargets) {
+      this.showCallout(this.getModeHtml(), 1200, true);
+    } else if (showMessage) {
+      if (typeof window.clearTimeout === 'function') window.clearTimeout(this.calloutTimer);
+      this.calloutTimer = null;
+      const callout = typeof document.getElementById === 'function' ? document.getElementById('rope-callout') : null;
+      if (callout) callout.classList.add('hidden');
+    }
+  }
+
+  getCommandText() {
+    const labels = {
+      forward: '노랑',
+      backward: '빨강',
+      left: '파랑',
+      right: '초록'
+    };
+    if (!this.commandTargets) return '전원 점프!';
+    const names = this.commandTargets.map((action) => labels[action]).join(' + ');
+    return this.commandTargets.length === 1 ? `${names}만 점프!` : `${names} 점프!`;
+  }
+
+  getModeHtml() {
+    if (!this.commandTargets) return this.modeLabel;
+    const labels = {
+      forward: ['노랑', 'yellow'],
+      backward: ['빨강', 'red'],
+      left: ['파랑', 'blue'],
+      right: ['초록', 'green']
+    };
+    const names = this.commandTargets.map((action) => {
+      const [name, color] = labels[action];
+      return `<span class="rope-command-color ${color}">${name}</span>`;
+    }).join(' + ');
+    return this.commandTargets.length === 1 ? `${names}만 점프!` : `${names} 점프!`;
   }
 
   updateJumpCallout() {
@@ -382,8 +449,12 @@ class TeamJumpRopeGame {
     const warning = seconds <= 0.28 && seconds > 0.04;
     const callout = document.getElementById('rope-callout');
     if (!this.calloutTimer) {
-      callout.textContent = this.doubleRopeRemaining > 0 ? 'JUMP! · DOUBLE' : 'JUMP!';
-      callout.classList.toggle('hidden', !warning);
+      if (this.commandTargets) {
+        callout.innerHTML = this.getModeHtml();
+        callout.classList.toggle('hidden', !warning);
+      } else {
+        callout.classList.add('hidden');
+      }
     }
   }
 
@@ -420,10 +491,11 @@ class TeamJumpRopeGame {
     this.particles = this.particles.filter((particle) => particle.life > 0);
   }
 
-  showCallout(message, duration) {
+  showCallout(message, duration, allowHtml = false) {
     window.clearTimeout(this.calloutTimer);
     const callout = document.getElementById('rope-callout');
-    callout.textContent = message;
+    if (allowHtml) callout.innerHTML = message;
+    else callout.textContent = message;
     callout.classList.remove('hidden');
     this.calloutTimer = window.setTimeout(() => {
       this.calloutTimer = null;
@@ -436,8 +508,8 @@ class TeamJumpRopeGame {
     const time = document.getElementById('rope-time');
     if (score) score.textContent = this.score;
     if (time) {
-      time.textContent = Math.ceil(this.timeRemaining);
-      time.classList.toggle('urgent', this.timeRemaining <= 10);
+      time.textContent = this.roundCount;
+      time.classList.remove('urgent');
     }
     const multiplierNode = document.getElementById('rope-multiplier');
     if (multiplierNode) multiplierNode.textContent = this.feverRemaining > 0 ? '×2' : '×1';
@@ -463,7 +535,7 @@ class TeamJumpRopeGame {
     hud.dataset.phase = phase;
     hud.classList.toggle('is-fever', this.feverRemaining > 0);
     const tempo = this.getTempoInfo();
-    document.getElementById('rope-tempo-label').textContent = this.doubleRopeRemaining > 0
+    document.getElementById('rope-tempo-label').textContent = this.doubleRopeMode
       ? `TEMPO ${tempo.level} · DOUBLE ROPE!`
       : `TEMPO ${tempo.level} · ${tempo.label}`;
     document.getElementById('rope-beat-text').textContent = beatText;
@@ -487,12 +559,12 @@ class TeamJumpRopeGame {
     document.getElementById('rope-callout').classList.add('hidden');
     const badge = document.getElementById('rope-gameover-badge');
     const message = document.getElementById('rope-gameover-message');
-    badge.textContent = reason === 'TIME_UP' ? "TIME'S UP!" : 'TEAM OUT';
-    message.textContent = this.score >= 45 ? '우리 팀 호흡이 최고예요!' : this.score >= 24 ? '우리 팀 호흡이 좋아요!' : '박자를 맞춰 다시 도전!';
+    badge.textContent = 'TEAM OUT';
+    message.textContent = this.roundCount >= 30 ? '끝까지 버틴 최고의 팀!' : this.roundCount >= 15 ? '색깔 지시도 잘 버텼어요!' : '10회 이후가 진짜 시작!';
     document.getElementById('rope-final-score').textContent = this.score;
     document.getElementById('rope-perfect-count').textContent = this.perfectCount;
     document.getElementById('rope-player-results').innerHTML = this.players.map((player, index) =>
-      `<div class="rope-result-card p${index + 1}"><span>${player.label} · ${player.key}</span><strong>${player.clears}회</strong><span>실수 ${player.misses}</span></div>`
+      `<div class="rope-result-card p${index + 1}"><span>${player.label} · ${player.key}</span><strong>${player.clears}회</strong></div>`
     ).join('');
     document.getElementById('rope-gameover-modal').classList.remove('hidden');
   }
@@ -517,7 +589,7 @@ class TeamJumpRopeGame {
     ctx.globalAlpha = 0.9;
     ctx.font = '950 42px "Arial Rounded MT Bold", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(this.doubleRopeRemaining > 0
+    ctx.fillText(this.doubleRopeMode
       ? '⚡ DOUBLE ROPE EVENT · TWO ROPES! ⚡'
       : '4-PLAYER  ·  ONE ROPE  ·  FOUR JUMPS', 800, 82);
     ctx.globalAlpha = 1;
