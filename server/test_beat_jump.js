@@ -27,6 +27,10 @@ assert(pageSource.includes('js/box-character.js'), 'timing jump must load the sh
 assert(source.includes('drawDodgeBoxCharacter'), 'timing-jump players must use the shared face-box design');
 assert(!source.includes('Four non-human mascot silhouettes'), 'the old custom mascot bodies must be removed');
 assert(boxCharacterSource.includes('frontColor') && boxCharacterSource.includes('mouthColor'), 'the shared box renderer must support player recoloring');
+assert(!source.includes("outlineColor: pulse ? '#ffffff'"), 'successful jumps must not flash a distracting white outline');
+for (const expression of ['neutral', 'jump', 'happy', 'hit']) {
+  assert(boxCharacterSource.includes(`expression === '${expression}'`) || expression === 'neutral', `the shared box must support the ${expression} expression`);
+}
 
 function makeHarness() {
   const game = Object.create(GameClass.prototype);
@@ -94,10 +98,13 @@ assert.strictEqual(judgeGame.score, 1, 'one independent clear should add one poi
 assert.deepStrictEqual(judgeGame.players.map((player) => player.lives), [3, 3, 3, 3], 'a clear must not affect any life');
 judgeGame.judgePlayer(judgeGame.players[3], leftObstacle);
 assert.strictEqual(judgeGame.sharedLives, 2, 'one miss should remove exactly one shared team life');
+assert.strictEqual(judgeGame.players[3].hitFlash, 0.8, 'the colliding player must receive a visible hit marker');
+assert.strictEqual(judgeGame.players[0].hitFlash, 0, 'players who did not collide must not receive the marker');
 assert.deepStrictEqual(judgeGame.players.map((player) => player.lives), [3, 3, 3, 3], 'timing jump should not use individual lives');
 assert.strictEqual(judgeGame.wave.perfect, false, 'any individual miss should break the perfect wave');
 judgeGame.judgePlayer(judgeGame.players[0], leftObstacle);
 assert.strictEqual(judgeGame.sharedLives, 2, 'the short team invulnerability window should block immediate repeat damage');
+assert.strictEqual(judgeGame.players[0].hitFlash, 0.8, 'a collision during team invulnerability must still mark the correct player');
 assert.strictEqual(judgeGame.damageCooldown, 2, 'a collision should start a two-second team invulnerability window');
 judgeGame.damageCooldown = 0;
 judgeGame.judgePlayer(judgeGame.players[0], leftObstacle);
@@ -119,6 +126,7 @@ assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), tr
 timingPlayer.velocity = -100;
 timingPlayer.lastJumpAt = timingGame.elapsed - 0.4;
 assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), false, 'a grounded late jump must not clear the obstacle');
+assert(source.includes('dataset.hitPlayers'), 'the canvas must expose which player currently has the visible collision marker');
 
 const timeDifficultyGame = makeHarness();
 const openingSpeed = timeDifficultyGame.makeObstacle('cone', 1, 0, 1).speed;

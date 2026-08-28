@@ -59,7 +59,7 @@ class BeatJumpGame {
   createPlayers() {
     return this.playerMeta.map((meta, index) => ({
       ...meta, x: this.playerXs[index], height: 0, velocity: 0,
-      lives: 3, clears: 0, stunned: 0, flash: 0,
+      lives: 3, clears: 0, stunned: 0, flash: 0, hitFlash: 0,
       squash: 0, lastJumpAt: -Infinity, eliminated: false
     }));
   }
@@ -392,6 +392,10 @@ class BeatJumpGame {
       this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 8);
     } else {
       this.wave.perfect = false;
+      player.hitFlash = 0.8;
+      player.stunned = Math.max(player.stunned, 0.18);
+      this.shake = Math.max(this.shake, 9);
+      this.spawnBurst(player.x, this.groundY - 62, '#fb7185', 10);
       if (this.damageCooldown <= 0) {
         this.sharedLives = Math.max(0, this.sharedLives - 1);
         this.damageCooldown = this.damageCooldownDuration;
@@ -423,6 +427,7 @@ class BeatJumpGame {
 
     for (const player of this.players) {
       player.flash = Math.max(0, player.flash - dt);
+      player.hitFlash = Math.max(0, player.hitFlash - dt);
       player.stunned = Math.max(0, player.stunned - dt);
       player.squash = Math.max(0, player.squash - dt * 4);
       if (player.height > 0 || player.velocity > 0) {
@@ -491,7 +496,10 @@ class BeatJumpGame {
   drawPlayer(player, index) {
     const ctx = this.ctx;
     const y = this.groundY - player.height;
-    const pulse = player.flash > 0 && Math.floor(player.flash * 16) % 2 === 0;
+    const hit = player.hitFlash > 0;
+    const expression = hit
+      ? 'hit'
+      : (player.flash > 0 ? 'happy' : (player.height > 8 ? 'jump' : 'neutral'));
     const squash = player.height === 0 ? 1 - player.squash * 0.13 : 1.04;
 
     ctx.save();
@@ -509,10 +517,29 @@ class BeatJumpGame {
       topColor: player.top,
       frontColor: player.color,
       sideColor: player.dark,
-      mouthColor: '#ffffff',
-      outlineColor: pulse ? '#ffffff' : '#28231f',
-      drawShadow: false
+      mouthColor: '#28231f',
+      outlineColor: hit ? '#ff304f' : '#28231f',
+      drawShadow: false,
+      expression
     });
+
+    if (hit) {
+      const hitPulse = 1 + Math.sin(player.hitFlash * 34) * 0.08;
+      ctx.save();
+      ctx.scale(hitPulse, hitPulse);
+      ctx.strokeStyle = '#ff304f';
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = '#ff304f';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(-18, -132);
+      ctx.lineTo(18, -96);
+      ctx.moveTo(18, -132);
+      ctx.lineTo(-18, -96);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.restore();
     this.canvas.dataset[`p${index + 1}Height`] = player.height.toFixed(1);
     this.canvas.dataset[`p${index + 1}Lives`] = String(this.sharedLives);
@@ -618,6 +645,10 @@ class BeatJumpGame {
     this.canvas.dataset.rhythmPattern = 'none';
     this.canvas.dataset.rhythmNotation = 'none';
     this.canvas.dataset.waveNumber = String(this.waveNumber);
+    this.canvas.dataset.hitPlayers = this.players
+      .filter((player) => player.hitFlash > 0)
+      .map((player) => player.label)
+      .join(',');
     this.canvas.dataset.combo = String(this.combo);
     this.canvas.dataset.sharedLives = String(this.sharedLives);
     this.canvas.dataset.damageCooldown = this.damageCooldown.toFixed(2);

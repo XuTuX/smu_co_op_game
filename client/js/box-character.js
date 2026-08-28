@@ -11,7 +11,8 @@
       sideColor = '#d9a900',
       mouthColor = '#ff6b35',
       outlineColor = '#28231f',
-      drawShadow = true
+      drawShadow = true,
+      expression = 'neutral'
     } = options;
     const scale = Math.min(width, height) / 68;
 
@@ -53,14 +54,43 @@
     ctx.fillRect(-28, -24, 54, 52);
     ctx.strokeRect(-28, -24, 54, 52);
 
-    ctx.fillStyle = outlineColor;
-    ctx.fillRect(-15, -10, 7, 8);
-    ctx.fillRect(8, -10, 7, 8);
-    ctx.fillStyle = mouthColor;
-    ctx.fillRect(-8, 2, 16, 9);
     ctx.strokeStyle = outlineColor;
+    ctx.fillStyle = outlineColor;
     ctx.lineWidth = 3;
-    ctx.strokeRect(-8, 2, 16, 9);
+    ctx.lineCap = 'round';
+    if (expression === 'hit') {
+      ctx.beginPath();
+      ctx.moveTo(-17, -12); ctx.lineTo(-7, -3);
+      ctx.moveTo(-7, -12); ctx.lineTo(-17, -3);
+      ctx.moveTo(7, -12); ctx.lineTo(17, -3);
+      ctx.moveTo(17, -12); ctx.lineTo(7, -3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-10, 10); ctx.lineTo(-5, 5); ctx.lineTo(0, 10); ctx.lineTo(5, 5); ctx.lineTo(10, 10);
+      ctx.stroke();
+    } else if (expression === 'happy') {
+      ctx.beginPath();
+      ctx.arc(-12, -5, 6, Math.PI, Math.PI * 2);
+      ctx.arc(12, -5, 6, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 2, 11, 0.18, Math.PI - 0.18);
+      ctx.stroke();
+    } else if (expression === 'jump') {
+      ctx.fillRect(-16, -13, 8, 13);
+      ctx.fillRect(8, -13, 8, 13);
+      ctx.fillStyle = mouthColor;
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 7, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(-15, -10, 7, 8);
+      ctx.fillRect(8, -10, 7, 8);
+      ctx.fillStyle = mouthColor;
+      ctx.fillRect(-8, 2, 16, 9);
+      ctx.strokeRect(-8, 2, 16, 9);
+    }
     ctx.restore();
   }
 

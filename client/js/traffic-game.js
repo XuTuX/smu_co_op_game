@@ -1154,7 +1154,8 @@ class ObstacleDodgeGame {
       topColor,
       frontColor,
       sideColor,
-      mouthColor: hazard.hit ? '#f5a9c1' : '#ff6b35'
+      mouthColor: hazard.hit ? '#f5a9c1' : '#ff6b35',
+      expression: hazard.hit ? 'hit' : 'neutral'
     });
   }
 
