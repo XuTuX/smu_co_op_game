@@ -53,7 +53,7 @@ class ObstacleDodgeGame {
     this.lastLaserWaveSize = 0;
     this.lastDownColumn = -1;
     this.elapsed = 0;
-    this.timeRemaining = CONFIG.GAME_DURATION;
+    this.timeRemaining = 0;
     this.score = 0;
     this.dodged = 0;
     this.bonusScore = 0;
@@ -111,12 +111,13 @@ class ObstacleDodgeGame {
   bindUI() {
     document.getElementById('traffic-restart-btn').addEventListener('click', () => this.beginReadyCheck());
     document.getElementById('traffic-sound-btn').addEventListener('click', (event) => {
-      this.soundEngine.isMuted = !this.soundEngine.isMuted;
-      event.currentTarget.textContent = this.soundEngine.isMuted ? '🔇' : '🔊';
+      const muted = this.soundEngine.toggleFromButton();
+      event.currentTarget.textContent = muted ? '🔇' : '🔊';
     });
   }
 
   beginReadyCheck() {
+    this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
@@ -166,14 +167,12 @@ class ObstacleDodgeGame {
     document.querySelectorAll('#traffic-start-modal [data-ready-action]').forEach((card) => {
       const isReady = Boolean(this.readyPlayers[card.dataset.readyAction]);
       card.classList.toggle('is-ready', isReady);
-      const status = card.querySelector('.ready-state');
-      if (status) status.textContent = isReady ? '준비 완료 ✓ · 다시 누르면 취소' : '대기 중';
+      const button = card.querySelector('.ready-tap');
+      if (button) button.textContent = isReady ? '취소' : '준비';
     });
     const progress = document.getElementById('traffic-ready-progress');
     if (progress) {
-      progress.textContent = readyCount === this.readyActions.length
-        ? '모두 준비 완료!'
-        : `준비 ${readyCount} / ${this.readyActions.length}`;
+      progress.textContent = `${readyCount} / ${this.readyActions.length}`;
       progress.classList.toggle('all-ready', readyCount === this.readyActions.length);
     }
   }
@@ -182,21 +181,13 @@ class ObstacleDodgeGame {
     const badge = document.getElementById('traffic-hardware-badge');
     const text = document.getElementById('traffic-hardware-text');
     badge.className = connected ? 'status-badge connected' : 'status-badge local';
-    text.textContent = connected ? 'ESP32 LIVE' : 'PC TEST MODE';
+    text.textContent = connected ? 'ESP32' : 'PC';
   }
 
   updateInputUI(inputs) {
     document.querySelectorAll('.canvas-control[data-action]').forEach((button) => {
       button.classList.toggle('active', Boolean(inputs[button.dataset.action]));
     });
-    const labels = [];
-    if (inputs.forward) labels.push('UP');
-    if (inputs.backward) labels.push('DOWN');
-    if (inputs.left) labels.push('LEFT');
-    if (inputs.right) labels.push('RIGHT');
-    const status = document.getElementById('traffic-input-status');
-    status.textContent = labels.length ? `INPUT: ${labels.join(' + ')}` : 'INPUT READY';
-    status.classList.toggle('active', labels.length > 0);
   }
 
   resetGame() {
@@ -227,7 +218,7 @@ class ObstacleDodgeGame {
     this.lastLaserWaveSize = 0;
     this.lastDownColumn = -1;
     this.elapsed = 0;
-    this.timeRemaining = CONFIG.GAME_DURATION;
+    this.timeRemaining = 0;
     this.score = 0;
     this.dodged = 0;
     this.bonusScore = 0;
@@ -253,12 +244,18 @@ class ObstacleDodgeGame {
     overlay.classList.remove('hidden');
     let count = 3;
     text.textContent = count;
+    this.soundEngine.playCountdown(count);
     this.countdownInterval = window.setInterval(() => {
       count--;
-      if (count > 0) text.textContent = count;
+      if (count > 0) {
+        text.textContent = count;
+        this.soundEngine.playCountdown(count);
+      }
       else {
         window.clearInterval(this.countdownInterval);
         text.textContent = 'GO!';
+        this.soundEngine.playCountdown(0);
+        this.soundEngine.startMusic('traffic');
         this.state = 'PLAYING';
         this.countdownHideTimer = window.setTimeout(() => overlay.classList.add('hidden'), 500);
       }
@@ -268,7 +265,7 @@ class ObstacleDodgeGame {
   update(dt) {
     this.updatePlayer(dt);
     this.elapsed += dt;
-    this.timeRemaining = Math.max(0, this.timeRemaining - dt);
+    this.timeRemaining = this.elapsed;
     this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
 
     const nextLevel = Math.min(8, 1 + Math.floor(this.score / 100));
@@ -311,7 +308,6 @@ class ObstacleDodgeGame {
     this.updateHeart(dt);
     this.score = Math.floor(this.elapsed * 10) + this.bonusScore;
     this.updateHUD();
-    if (this.timeRemaining <= 0) this.endGame('TIME_UP');
   }
 
   getWaveSize(type) {
@@ -774,21 +770,16 @@ class ObstacleDodgeGame {
     this.player.invulnerable = 1.4;
     if (this.lives === 1) this.scheduleHeartDrop();
     this.soundEngine.playCrash();
-    this.showToast(this.lives > 0 ? `충돌! 남은 목숨 ${this.lives}` : '게임 종료');
     this.updateHUD();
     if (this.lives <= 0) this.endGame('LIVES');
   }
 
-  endGame(reason = 'LIVES') {
+  endGame() {
     if (this.state === 'GAMEOVER') return;
     this.state = 'GAMEOVER';
+    this.soundEngine.stopMusic();
     this.inputManager.resetAll();
-    const survivedFullRound = reason === 'TIME_UP';
-    const resultMessage = survivedFullRound
-      ? '60초 생존 성공!'
-      : (this.score >= this.doubleWaveScore ? '좋은 무빙이에요!' : '괜찮은 움직임!');
-    document.getElementById('traffic-gameover-badge').textContent = survivedFullRound ? "TIME'S UP!" : 'GAME OVER';
-    document.getElementById('traffic-gameover-message').textContent = resultMessage;
+    document.getElementById('traffic-gameover-message').textContent = '게임 종료';
     document.getElementById('traffic-final-score').textContent = this.score;
     document.getElementById('traffic-gameover-modal').classList.remove('hidden');
   }

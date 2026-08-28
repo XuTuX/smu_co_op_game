@@ -8,6 +8,9 @@ const vm = require('vm');
 
 const sourcePath = path.join(__dirname, '..', 'client', 'js', 'traffic-game.js');
 const source = `${fs.readFileSync(sourcePath, 'utf8')}\nwindow.ObstacleDodgeGame = ObstacleDodgeGame;`;
+assert(!source.includes("endGame('TIME_UP')"), 'obstacle dodge must not end because of elapsed time or score');
+assert(source.includes('this.timeRemaining = this.elapsed'), 'the HUD should show count-up survival time');
+assert(source.includes('if (this.lives <= 0) this.endGame'), 'obstacle dodge should end only after all team lives are gone');
 const context = vm.createContext({
   console,
   window: { addEventListener() {} }

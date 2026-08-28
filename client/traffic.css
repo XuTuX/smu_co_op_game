@@ -1,9 +1,9 @@
 .traffic-brand { background: var(--orange); color: var(--paper); }
 .mode-link.traffic-active { background: var(--orange); color: var(--paper); }
-.traffic-stats { grid-template-columns: 220px 1fr 250px; }
+.traffic-stats { grid-template-columns: repeat(3, 1fr); }
+.traffic-time-card { background: var(--blue); }
 .traffic-lives-card { background: var(--pink); transform: rotate(1deg); }
 .traffic-lives-card strong { display: block; margin: 12px 0 9px; color: #d93434; font-size: clamp(36px, 5vw, 60px); letter-spacing: .02em; white-space: nowrap; }
-.traffic-time-note b { font-size: 22px; color: var(--ink); }
 .traffic-ready-progress { background: var(--orange); color: var(--paper); }
 .traffic-frame { background: #172b31; }
 .traffic-frame #trafficCanvas { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -53,7 +53,7 @@
 }
 .traffic-page.is-playing .game-meta-row { display: none; }
 .traffic-page.is-playing .traffic-stats {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   z-index: 20;
   gap: 8px;
   margin: 0;
@@ -90,7 +90,7 @@
 }
 
 @media (max-width: 900px) {
-  .traffic-stats { grid-template-columns: 1fr 1fr; }
+  .traffic-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 620px) {
@@ -101,8 +101,7 @@
   .traffic-page.is-playing .game-card-label { font-size: 10px; }
   .traffic-page.is-playing .traffic-stats .stat-block { min-height: 54px; padding: 6px 9px; gap: 8px; }
   .traffic-page.is-playing .traffic-stats .stat-block strong { font-size: 29px; }
-  .traffic-page.is-playing .traffic-stats .stat-label,
-  .traffic-page.is-playing .traffic-stats .stat-note { font-size: 8px; }
+  .traffic-page.is-playing .clean-stat-title { font-size: 14px; }
   .traffic-page.is-playing .traffic-frame {
     width: 100%;
     height: 100%;

@@ -145,6 +145,8 @@ button { color: inherit; }
 
 .stat-score { background: var(--yellow); }
 .stat-time { background: var(--blue); transform: rotate(1deg); }
+.parking-stats { grid-template-columns: 1fr 1fr; }
+.clean-stat-title { display: block; font-size: 18px; font-weight: 950; }
 .stat-label, .stat-note { display: block; font-size: 11px; }
 .stat-block strong { font-size: clamp(56px, 7vw, 86px); line-height: 0.95; letter-spacing: -0.07em; }
 .stat-note { margin-top: 8px; color: rgba(40, 35, 31, 0.7); }
@@ -301,6 +303,7 @@ button { color: inherit; }
   line-height: 1;
 }
 .parking-page.is-playing .parking-stats .stat-note { margin: 0 0 0 auto; }
+.parking-page.is-playing .clean-stat-title { font-size: 18px; }
 .parking-page.is-playing .parking-frame {
   width: 100%;
   height: 100%;
@@ -389,6 +392,7 @@ button { color: inherit; }
 .modal-title { margin-bottom: 10px; font-size: clamp(34px, 5vw, 58px); font-weight: 950; line-height: 1.02; letter-spacing: -0.055em; }
 .modal-title span { background: linear-gradient(transparent 54%, var(--yellow) 54%); }
 .modal-subtitle { width: min(560px, 100%); margin: 0 auto 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.ready-check-modal .modal-card { width: min(820px, calc(100% - 32px)); }
 .role-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
 .role-card { display: flex; flex-direction: column; align-items: center; gap: 5px; border: 2px solid var(--ink); border-radius: 13px; padding: 10px 7px; }
 .role-p1 { background: var(--green); }
@@ -403,7 +407,7 @@ button { color: inherit; }
   filter: saturate(1.15) brightness(1.03);
 }
 .ready-tap {
-  min-height: 30px;
+  min-height: 36px;
   margin-top: 3px;
   border: 2px solid var(--ink);
   border-radius: 999px;
@@ -412,18 +416,12 @@ button { color: inherit; }
   padding: 3px 8px;
   color: var(--ink);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   touch-action: none;
 }
 .ready-tap:active { transform: translateY(2px); box-shadow: none; }
-.role-card.is-ready .ready-tap { display: none; }
-.ready-state {
-  color: rgba(40, 35, 31, .68);
-  font-size: 10px;
-  font-weight: 900;
-}
-.role-card.is-ready .ready-state { color: var(--ink); }
+.role-card.is-ready .ready-tap { background: var(--paper); }
 .ready-progress {
   display: inline-flex;
   align-items: center;
@@ -469,6 +467,7 @@ kbd {
 .btn:hover { transform: translateY(-2px); box-shadow: 6px 8px 0 var(--ink); }
 .btn:active { transform: translate(4px, 4px); box-shadow: 1px 2px 0 var(--ink); }
 .btn-large { font-size: 17px; }
+.game-restart { min-width: 190px; }
 .modal-footnote { margin-top: 14px; color: var(--muted); font-size: 11px; }
 .countdown-overlay { background: rgba(255, 216, 77, 0.72); backdrop-filter: blur(4px); }
 .countdown-number { font-size: clamp(100px, 18vw, 210px); font-weight: 950; letter-spacing: -0.08em; text-shadow: 8px 9px 0 var(--ink); -webkit-text-stroke: 3px var(--ink); color: var(--paper); }
@@ -555,7 +554,7 @@ kbd {
 .score-summary { display: flex; justify-content: center; gap: 14px; margin: 22px 0 26px; }
 .summary-box { min-width: 150px; border: var(--line); border-radius: 16px; background: var(--blue); box-shadow: 4px 5px 0 var(--ink); padding: 15px; }
 .summary-box:nth-child(2) { background: var(--pink); }
-.summary-label { display: block; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 900; }
+.summary-label { display: block; font-size: 16px; font-weight: 900; }
 .summary-box strong { font-size: 42px; }
 .controller-section { padding-top: 42px; }
 .controller-heading { justify-content: space-between; gap: 22px; margin-bottom: 18px; }
@@ -672,6 +671,7 @@ kbd {
   .parking-page.is-playing .parking-card { padding: 0; }
   .parking-page.is-playing .parking-stats .stat-block { min-height: 54px; padding: 6px 9px; gap: 8px; }
   .parking-page.is-playing .parking-stats .stat-block strong { font-size: 29px; }
+  .parking-page.is-playing .clean-stat-title { font-size: 14px; }
   .parking-page.is-playing .parking-stats .stat-label,
   .parking-page.is-playing .parking-stats .stat-note { font-size: 8px; }
   .parking-page.is-playing .parking-frame {

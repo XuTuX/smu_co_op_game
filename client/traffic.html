@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#fff5db">
-  <title>Bus Co-op Club — Falling Maze</title>
+  <title>장애물 피하기</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="traffic.css">
 </head>
@@ -13,15 +13,12 @@
     <header class="site-header">
       <div class="brand-lockup" aria-label="Bus Co-op Club">
         <div class="brand-mark traffic-brand" aria-hidden="true">B</div>
-        <div>
-          <p class="eyebrow">4-PLAYER CO-OP</p>
-          <h1>Bus Co-op Club</h1>
-        </div>
+        <h1>장애물 피하기</h1>
       </div>
       <div class="header-actions">
         <div id="traffic-hardware-badge" class="status-badge local">
           <span class="status-dot"></span>
-          <span id="traffic-hardware-text">PC TEST MODE</span>
+          <span id="traffic-hardware-text">PC</span>
         </div>
         <button id="traffic-sound-btn" class="round-button" type="button" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">🔊</button>
       </div>
@@ -36,39 +33,33 @@
     </nav>
 
     <main class="game-card traffic-card">
-      <div class="game-meta-row">
-        <div class="game-card-label"><span aria-hidden="true">✦</span> FALLING GRID</div>
-      </div>
-
       <section class="stats-row traffic-stats" aria-label="장애물 피하기 게임 상태">
         <div class="stat-block stat-score">
-          <span class="stat-label">SCORE</span>
+          <span class="clean-stat-title">점수</span>
           <strong id="traffic-score">0</strong>
-          <span class="stat-note traffic-time-note">TIME <b id="traffic-time">60</b> SEC</span>
         </div>
-        <div class="stat-copy">
-          <h2>빈칸을 찾아<br><span>끝까지 살아남기</span></h2>
-          <p>P1 위 · P2 아래 · P3 왼쪽 · P4 오른쪽</p>
+        <div class="stat-block traffic-time-card">
+          <span class="clean-stat-title">시간</span>
+          <strong id="traffic-time">0</strong>
         </div>
         <div class="stat-block traffic-lives-card">
-          <span class="stat-label">BUS LIFE</span>
+          <span class="clean-stat-title">목숨</span>
           <strong id="traffic-lives" aria-label="남은 목숨 3개">♥♥♥</strong>
         </div>
       </section>
 
       <section class="canvas-frame traffic-frame" aria-label="이동 박스와 레이저를 피하고 별과 생명 하트를 획득하는 게임 화면">
         <canvas id="trafficCanvas"></canvas>
-        <div id="traffic-input-status" class="input-status">INPUT READY</div>
         <div id="traffic-toast" class="traffic-toast hidden" aria-live="assertive"></div>
 
         <div class="canvas-controls" aria-label="장애물 피하기 조작 패드">
           <div class="canvas-control-group">
-            <button class="canvas-control p3" type="button" data-action="left" aria-label="장애물 게임 왼쪽 버튼"><span aria-hidden="true">←</span><small>A</small></button>
-            <button class="canvas-control p4" type="button" data-action="right" aria-label="장애물 게임 오른쪽 버튼"><span aria-hidden="true">→</span><small>D</small></button>
+            <button class="canvas-control p3" type="button" data-action="left" aria-label="장애물 게임 왼쪽 버튼"><span aria-hidden="true">←</span></button>
+            <button class="canvas-control p4" type="button" data-action="right" aria-label="장애물 게임 오른쪽 버튼"><span aria-hidden="true">→</span></button>
           </div>
           <div class="canvas-control-group">
-            <button class="canvas-control p1" type="button" data-action="forward" aria-label="장애물 게임 위쪽 버튼"><span aria-hidden="true">↑</span><small>W</small></button>
-            <button class="canvas-control p2" type="button" data-action="backward" aria-label="장애물 게임 아래쪽 버튼"><span aria-hidden="true">↓</span><small>S</small></button>
+            <button class="canvas-control p1" type="button" data-action="forward" aria-label="장애물 게임 위쪽 버튼"><span aria-hidden="true">↑</span></button>
+            <button class="canvas-control p2" type="button" data-action="backward" aria-label="장애물 게임 아래쪽 버튼"><span aria-hidden="true">↓</span></button>
           </div>
         </div>
 
@@ -78,28 +69,25 @@
 
         <div id="traffic-start-modal" class="overlay modal-overlay ready-check-modal">
           <div class="modal-card traffic-modal">
-            <div class="modal-badge traffic-badge">BLOCK HOP</div>
-            <h2 class="modal-title">4명이 함께<br><span>장애물 피하기</span></h2>
-            <p class="modal-subtitle">각자 맡은 버튼을 눌러 준비하세요. 준비 완료 후 같은 버튼을 다시 누르면 취소됩니다. 4명이 모두 준비되면 자동으로 시작합니다.</p>
+            <h2 class="modal-title">장애물 피하기</h2>
+            <p class="modal-subtitle">버튼을 눌러 준비하세요.</p>
             <div class="role-grid">
-              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>위</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
-              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>아래</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
-              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>왼쪽</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">눌러서 준비</button><span class="ready-state">대기 중</span></div>
-              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>오른쪽</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>위</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">준비</button></div>
+              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>아래</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">준비</button></div>
+              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>왼쪽</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">준비</button></div>
+              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>오른쪽</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">준비</button></div>
             </div>
-            <div id="traffic-ready-progress" class="ready-progress traffic-ready-progress" aria-live="polite">준비 0 / 4</div>
+            <div id="traffic-ready-progress" class="ready-progress traffic-ready-progress" aria-live="polite">0 / 4</div>
           </div>
         </div>
 
         <div id="traffic-gameover-modal" class="overlay modal-overlay hidden">
           <div class="modal-card gameover-card">
-            <div id="traffic-gameover-badge" class="modal-badge badge-red">GAME OVER</div>
-            <h2 id="traffic-gameover-message" class="modal-title">괜찮은 움직임!</h2>
+            <h2 id="traffic-gameover-message" class="modal-title">게임 종료</h2>
             <div class="score-summary">
-              <div class="summary-box"><span class="summary-label">SCORE</span><strong id="traffic-final-score">0</strong></div>
+              <div class="summary-box"><span class="summary-label">점수</span><strong id="traffic-final-score">0</strong></div>
             </div>
-            <p class="modal-footnote">ESP32 버튼 4개 중 아무 버튼이나 눌러 준비 화면으로 돌아가세요.</p>
-            <button id="traffic-restart-btn" class="btn btn-primary btn-large" type="button">다시 준비하기 <span aria-hidden="true">↻</span></button>
+            <button id="traffic-restart-btn" class="btn btn-primary btn-large game-restart" type="button">다시하기</button>
           </div>
         </div>
       </section>

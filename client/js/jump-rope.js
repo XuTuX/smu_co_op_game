@@ -51,7 +51,6 @@ class TeamJumpRopeGame {
     this.bestCombo = 0;
     this.feverGauge = 0;
     this.feverRemaining = 0;
-    this.feedbacks = [];
     this.particles = [];
     this.shake = 0;
     this.hitFreeze = 0;
@@ -89,7 +88,6 @@ class TeamJumpRopeGame {
       height: 0,
       velocity: 0,
       clears: 0,
-      misses: 0,
       stunned: 0,
       flash: 0,
       squash: 0,
@@ -100,12 +98,13 @@ class TeamJumpRopeGame {
   bindUI() {
     document.getElementById('rope-restart-btn').addEventListener('click', () => this.beginReadyCheck());
     document.getElementById('rope-sound-btn').addEventListener('click', (event) => {
-      this.soundEngine.isMuted = !this.soundEngine.isMuted;
-      event.currentTarget.textContent = this.soundEngine.isMuted ? '🔇' : '🔊';
+      const muted = this.soundEngine.toggleFromButton();
+      event.currentTarget.textContent = muted ? '🔇' : '🔊';
     });
   }
 
   beginReadyCheck() {
+    this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
@@ -156,11 +155,11 @@ class TeamJumpRopeGame {
     document.querySelectorAll('#rope-start-modal [data-ready-action]').forEach((card) => {
       const ready = Boolean(this.readyPlayers[card.dataset.readyAction]);
       card.classList.toggle('is-ready', ready);
-      const status = card.querySelector('.ready-state');
-      if (status) status.textContent = ready ? '준비 완료 ✓ · 다시 누르면 취소' : '대기 중';
+      const button = card.querySelector('.ready-tap');
+      if (button) button.textContent = ready ? '취소' : '준비';
     });
     const progress = document.getElementById('rope-ready-progress');
-    progress.textContent = readyCount === 4 ? '모두 준비 완료!' : `준비 ${readyCount} / 4`;
+    progress.textContent = `${readyCount} / 4`;
     progress.classList.toggle('all-ready', readyCount === 4);
   }
 
@@ -189,6 +188,7 @@ class TeamJumpRopeGame {
         window.clearInterval(this.countdownInterval);
         text.textContent = 'GO!';
         this.soundEngine.playCountdown(0);
+        this.soundEngine.startMusic('rope');
         this.previousPlayInputs = this.createReadyState();
         this.state = 'PLAYING';
         this.countdownHideTimer = window.setTimeout(() => overlay.classList.add('hidden'), 500);
@@ -217,7 +217,6 @@ class TeamJumpRopeGame {
     this.bestCombo = 0;
     this.feverGauge = 0;
     this.feverRemaining = 0;
-    this.feedbacks = [];
     this.particles = [];
     this.shake = 0;
     this.hitFreeze = 0;
@@ -232,17 +231,13 @@ class TeamJumpRopeGame {
     const badge = document.getElementById('rope-hardware-badge');
     const text = document.getElementById('rope-hardware-text');
     badge.className = connected ? 'status-badge connected' : 'status-badge local';
-    text.textContent = connected ? 'ESP32 LIVE' : 'PC TEST MODE';
+    text.textContent = connected ? 'ESP32' : 'PC';
   }
 
   updateInputUI(inputs) {
     document.querySelectorAll('.rope-player-button[data-action]').forEach((button) => {
       button.classList.toggle('active', Boolean(inputs[button.dataset.action]));
     });
-    const active = this.playerMeta.filter((meta) => inputs[meta.action]).map((meta) => meta.label);
-    const status = document.getElementById('rope-input-status');
-    status.textContent = active.length ? `JUMP: ${active.join(' + ')}` : 'INPUT READY';
-    status.classList.toggle('active', active.length > 0);
   }
 
   handleJumpInput(inputs) {
@@ -343,14 +338,9 @@ class TeamJumpRopeGame {
         player.clears++;
         this.score += multiplier;
         player.flash = 0.25;
-        this.addFeedback(player, `CLEAR +${multiplier}`, '#a7f3d0');
         this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 7);
       } else if ((shouldJump && !jumped) || (!shouldJump && jumped)) {
         allClear = false;
-        player.misses++;
-        player.stunned = 0.75;
-        player.flash = 0.75;
-        this.spawnBurst(player.x, this.groundY - 32, '#fb7185', 16);
       }
     }
     this.roundCount++;
@@ -398,7 +388,8 @@ class TeamJumpRopeGame {
     }
     this.currentMode = this.modeBag.pop();
     this.lastMode = this.currentMode;
-    this.modePassesRemaining = this.currentMode === 'double' ? 2 : (this.random() < 0.5 ? 1 : 2);
+    const isTargetCommand = this.currentMode === 'solo' || this.currentMode === 'pair';
+    this.modePassesRemaining = isTargetCommand ? 1 : (this.currentMode === 'double' ? 2 : (this.random() < 0.5 ? 1 : 2));
     this.commandTargets = null;
   }
 
@@ -486,10 +477,6 @@ class TeamJumpRopeGame {
     }
   }
 
-  addFeedback(player, text, color) {
-    this.feedbacks.push({ x: player.x, y: this.groundY - 230 - player.height, text, color, life: 1 });
-  }
-
   spawnBurst(x, y, color, amount) {
     for (let i = 0; i < amount; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -505,11 +492,6 @@ class TeamJumpRopeGame {
   }
 
   updateEffects(dt) {
-    for (const feedback of this.feedbacks) {
-      feedback.y -= 70 * dt;
-      feedback.life -= dt * 1.25;
-    }
-    this.feedbacks = this.feedbacks.filter((feedback) => feedback.life > 0);
     for (const particle of this.particles) {
       particle.x += particle.vx * dt;
       particle.y += particle.vy * dt;
@@ -539,61 +521,20 @@ class TeamJumpRopeGame {
       time.textContent = this.sharedLives > 0 ? '♥'.repeat(this.sharedLives) : '0';
       time.classList.toggle('urgent', this.sharedLives === 1);
     }
-    const multiplierNode = document.getElementById('rope-multiplier');
-    if (multiplierNode) multiplierNode.textContent = this.feverRemaining > 0 ? '×2' : '×1';
-    this.updateRhythmHUD();
-  }
-
-  updateRhythmHUD() {
-    const hud = document.getElementById('rope-rhythm-hud');
-    if (!hud) return;
-    const seconds = this.getSecondsToNextPass();
-    let phase = 'safe';
-    let beatText = '줄이 돌아오는 중';
-    if (this.passPulse > 0.45) {
-      phase = 'result';
-      beatText = '판정 완료';
-    } else if (seconds <= 0.28) {
-      phase = 'jump';
-      beatText = '바닥 도착 · 지금 점프!';
-    } else if (seconds <= 0.72) {
-      phase = 'ready';
-      beatText = '준비하세요';
-    }
-    hud.dataset.phase = phase;
-    hud.classList.toggle('is-fever', this.feverRemaining > 0);
-    const tempo = this.getTempoInfo();
-    document.getElementById('rope-tempo-label').textContent = this.doubleRopeMode
-      ? `TEMPO ${tempo.level} · DOUBLE ROPE!`
-      : `TEMPO ${tempo.level} · ${tempo.label}`;
-    document.getElementById('rope-beat-text').textContent = beatText;
-    document.getElementById('rope-beat-time').textContent = `${Math.min(9.9, seconds).toFixed(1)}s`;
-    document.getElementById('rope-beat-bar').style.width = `${Math.max(0, Math.min(100, (1 - seconds / 1.2) * 100))}%`;
-    document.getElementById('rope-combo').textContent = `×${this.combo}`;
-    document.getElementById('rope-fever-text').textContent = this.feverRemaining > 0
-      ? `${this.feverRemaining.toFixed(1)}s · ×2`
-      : `${this.feverGauge} / 3`;
-    document.getElementById('rope-fever-bar').style.width = this.feverRemaining > 0
-      ? `${(this.feverRemaining / 7) * 100}%`
-      : `${(this.feverGauge / 3) * 100}%`;
   }
 
   endGame(reason) {
     if (this.state !== 'PLAYING') return;
     this.state = 'GAMEOVER';
+    this.soundEngine.stopMusic();
     this.inputManager.resetAll();
     window.clearTimeout(this.calloutTimer);
     this.calloutTimer = null;
     document.getElementById('rope-callout').classList.add('hidden');
-    const badge = document.getElementById('rope-gameover-badge');
     const message = document.getElementById('rope-gameover-message');
-    badge.textContent = 'TEAM LIFE 0';
-    message.textContent = this.roundCount >= 30 ? '끝까지 버틴 최고의 팀!' : this.roundCount >= 15 ? '색깔 지시도 잘 버텼어요!' : '10회 이후가 진짜 시작!';
+    message.textContent = '게임 종료';
     document.getElementById('rope-final-score').textContent = this.score;
     document.getElementById('rope-perfect-count').textContent = this.perfectCount;
-    document.getElementById('rope-player-results').innerHTML = this.players.map((player, index) =>
-      `<div class="rope-result-card p${index + 1}"><span>${player.label} · ${player.key}</span><strong>${player.clears}회</strong></div>`
-    ).join('');
     document.getElementById('rope-gameover-modal').classList.remove('hidden');
   }
 
@@ -613,15 +554,6 @@ class TeamJumpRopeGame {
       ctx.arc(x, 95 + (x % 300) * 0.16, 18, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = '#f8fafc';
-    ctx.globalAlpha = 0.9;
-    ctx.font = '950 42px "Arial Rounded MT Bold", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(this.doubleRopeMode
-      ? '⚡ DOUBLE ROPE EVENT · TWO ROPES! ⚡'
-      : '4-PLAYER  ·  ONE ROPE  ·  FOUR JUMPS', 800, 82);
-    ctx.globalAlpha = 1;
-
     ctx.fillStyle = '#6d5a9a';
     ctx.fillRect(0, this.groundY, this.canvas.width, this.canvas.height - this.groundY);
     if (this.state === 'PLAYING') {
@@ -688,17 +620,6 @@ class TeamJumpRopeGame {
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
-    }
-    ctx.textAlign = 'center';
-    ctx.lineJoin = 'round';
-    for (const feedback of this.feedbacks) {
-      ctx.globalAlpha = Math.min(1, feedback.life * 2);
-      ctx.font = '950 34px "Arial Rounded MT Bold", system-ui, sans-serif';
-      ctx.lineWidth = 8;
-      ctx.strokeStyle = '#161228';
-      ctx.strokeText(feedback.text, feedback.x, feedback.y);
-      ctx.fillStyle = feedback.color;
-      ctx.fillText(feedback.text, feedback.x, feedback.y);
     }
     ctx.globalAlpha = 1;
   }
@@ -768,15 +689,6 @@ class TeamJumpRopeGame {
     ctx.fillText(player.label, 0, -100);
     ctx.restore();
 
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.font = '900 19px system-ui, sans-serif';
-    ctx.fillText(`${player.key} · ${player.clears}회`, player.x, 735);
-    ctx.fillStyle = '#c4b5fd';
-    ctx.font = '900 18px system-ui, sans-serif';
-    ctx.fillText(`통과 ${player.clears}`, player.x, 765);
-    ctx.restore();
     this.canvas.dataset[`p${index + 1}Height`] = player.height.toFixed(1);
     this.canvas.dataset[`p${index + 1}Lives`] = String(this.sharedLives);
     this.canvas.dataset[`p${index + 1}Clears`] = String(player.clears);

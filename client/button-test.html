@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#c6f36b">
-  <title>Bus Co-op Club — 4 Button Test</title>
+  <title>버튼 연습</title>
   <link rel="stylesheet" href="style.css?v=20260828-4">
   <link rel="stylesheet" href="button-test.css?v=20260828-4">
 </head>
@@ -13,15 +13,12 @@
     <header class="site-header">
       <div class="brand-lockup" aria-label="Bus Co-op Club">
         <div class="brand-mark test-brand" aria-hidden="true">4</div>
-        <div>
-          <p class="eyebrow">HARDWARE CHECK</p>
-          <h1>4 Button Test</h1>
-        </div>
+        <h1>버튼 연습</h1>
       </div>
 
       <div id="test-hardware-badge" class="status-badge disconnected" aria-live="polite">
         <span class="status-dot"></span>
-        <span id="test-hardware-text">ESP32 연결 대기</span>
+        <span id="test-hardware-text">연결 대기</span>
       </div>
     </header>
 
@@ -34,78 +31,43 @@
     </nav>
 
     <main class="game-card button-test-card">
-      <section class="test-intro">
-        <div>
-          <p class="game-card-label">GPIO 4 · 5 · 6 · 7 LIVE INPUT</p>
-          <h2>네 버튼을 하나씩 또는<br><span>동시에 눌러보세요.</span></h2>
-        </div>
-        <ol class="test-steps">
-          <li>각 버튼을 해당 GPIO와 <b>GND</b> 사이에 연결</li>
-          <li>기기를 ESP32 Wi-Fi <b>hihi</b>에 연결</li>
-          <li>각 카드의 색상·상태·횟수를 확인</li>
-        </ol>
-      </section>
-
       <section id="connection-panel" class="connection-panel waiting" aria-live="polite">
-        <div>
-          <span id="connection-kicker">WEBSOCKET · WAITING</span>
-          <strong id="connection-title">ESP32 입력 연결 대기 중</strong>
-        </div>
-        <p id="connection-help">ESP32 전원과 hihi Wi-Fi를 확인하세요.</p>
+        <strong id="connection-title">ESP32 연결 대기</strong>
       </section>
 
       <section class="button-grid" aria-label="ESP32 버튼 4개 실시간 상태">
         <article class="gpio-button-card p1" data-input-action="forward">
-          <header><span class="player-chip">P1</span><span class="gpio-chip">GPIO 4</span></header>
+          <header><span class="player-chip">P1</span><span class="gpio-chip">W</span></header>
           <div class="mini-button" aria-hidden="true"><span></span></div>
           <strong class="action-name">전진 / 위</strong>
-          <span class="button-state">떼짐 · HIGH</span>
-          <div class="card-count"><span>누른 횟수</span><b data-press-count="forward">0</b></div>
+          <span class="button-state">대기</span>
+          <div class="card-count"><span>횟수</span><b data-press-count="forward">0</b></div>
         </article>
 
         <article class="gpio-button-card p2" data-input-action="backward">
-          <header><span class="player-chip">P2</span><span class="gpio-chip">GPIO 5</span></header>
+          <header><span class="player-chip">P2</span><span class="gpio-chip">S</span></header>
           <div class="mini-button" aria-hidden="true"><span></span></div>
           <strong class="action-name">후진 / 아래</strong>
-          <span class="button-state">떼짐 · HIGH</span>
-          <div class="card-count"><span>누른 횟수</span><b data-press-count="backward">0</b></div>
+          <span class="button-state">대기</span>
+          <div class="card-count"><span>횟수</span><b data-press-count="backward">0</b></div>
         </article>
 
         <article class="gpio-button-card p3" data-input-action="left">
-          <header><span class="player-chip">P3</span><span class="gpio-chip">GPIO 6</span></header>
+          <header><span class="player-chip">P3</span><span class="gpio-chip">A</span></header>
           <div class="mini-button" aria-hidden="true"><span></span></div>
           <strong class="action-name">왼쪽</strong>
-          <span class="button-state">떼짐 · HIGH</span>
-          <div class="card-count"><span>누른 횟수</span><b data-press-count="left">0</b></div>
+          <span class="button-state">대기</span>
+          <div class="card-count"><span>횟수</span><b data-press-count="left">0</b></div>
         </article>
 
         <article class="gpio-button-card p4" data-input-action="right">
-          <header><span class="player-chip">P4</span><span class="gpio-chip">GPIO 7</span></header>
+          <header><span class="player-chip">P4</span><span class="gpio-chip">D</span></header>
           <div class="mini-button" aria-hidden="true"><span></span></div>
           <strong class="action-name">오른쪽</strong>
-          <span class="button-state">떼짐 · HIGH</span>
-          <div class="card-count"><span>누른 횟수</span><b data-press-count="right">0</b></div>
+          <span class="button-state">대기</span>
+          <div class="card-count"><span>횟수</span><b data-press-count="right">0</b></div>
         </article>
       </section>
-
-      <section class="test-stats" aria-label="버튼 테스트 전체 통계">
-        <article><span>전체 누름</span><strong id="total-press-count">0</strong></article>
-        <article><span>수신 패킷</span><strong id="packet-count">0</strong></article>
-        <article><span>동시 입력</span><strong id="simultaneous-count">0</strong></article>
-        <article><span>마지막 입력</span><strong id="last-input-time">—</strong></article>
-      </section>
-
-      <section class="test-log-card">
-        <div class="test-log-heading">
-          <h3>실시간 입력 기록</h3>
-          <button id="clear-log-btn" type="button">기록 지우기</button>
-        </div>
-        <ol id="input-log" class="input-log">
-          <li class="empty-log">ESP32 입력을 기다리는 중입니다.</li>
-        </ol>
-      </section>
-
-      <p class="test-note"><b>정상 기준:</b> 버튼을 떼면 <code>HIGH / false</code>, 누르면 <code>LOW / true</code>입니다. 두 개 이상을 동시에 누르면 여러 카드가 함께 눌림 상태로 표시됩니다.</p>
     </main>
   </div>
 

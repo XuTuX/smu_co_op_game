@@ -221,7 +221,6 @@ class GameMap {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.font = '800 18px ui-monospace, monospace';
-    ctx.fillText(`0${this.stage} / ${this.stageCode}`, this.width - 55, this.height - 48);
     ctx.restore();
   }
 

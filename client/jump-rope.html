@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#8b5cf6">
-  <title>Bus Co-op Club — 4인 단체 줄넘기</title>
+  <title>단체 줄넘기</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="jump-rope.css">
 </head>
@@ -13,15 +13,12 @@
     <header class="site-header">
       <div class="brand-lockup" aria-label="Bus Co-op Club">
         <div class="brand-mark rope-brand" aria-hidden="true">J</div>
-        <div>
-          <p class="eyebrow">4-PLAYER CO-OP</p>
-          <h1>Bus Co-op Club</h1>
-        </div>
+        <h1>단체 줄넘기</h1>
       </div>
       <div class="header-actions">
         <div id="rope-hardware-badge" class="status-badge local">
           <span class="status-dot"></span>
-          <span id="rope-hardware-text">PC TEST MODE</span>
+          <span id="rope-hardware-text">PC</span>
         </div>
         <button id="rope-sound-btn" class="round-button" type="button" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">🔊</button>
       </div>
@@ -36,51 +33,26 @@
     </nav>
 
     <main class="game-card rope-card">
-      <div class="game-meta-row">
-        <div class="game-card-label"><span aria-hidden="true">∞</span> TEAM JUMP ROPE</div>
-      </div>
-
       <section class="stats-row rope-stats" aria-label="단체 줄넘기 게임 상태">
         <div class="stat-block rope-score-card">
-          <span class="stat-label">TEAM SCORE</span>
+          <span class="clean-stat-title">점수</span>
           <strong id="rope-score">0</strong>
-          <span class="stat-note">POINTS · <b id="rope-multiplier">×1</b></span>
-        </div>
-        <div class="stat-copy">
-          <h2>한 줄에서 뛰어도<br><span>점프는 각자!</span></h2>
-          <p>전원 4회 이후 혼자·둘이·두 줄·느림·빠름이 무작위</p>
         </div>
         <div class="stat-block rope-time-card">
-          <span class="stat-label">TEAM LIFE</span>
-          <div><strong id="rope-time">♥♥♥</strong></div>
-          <span class="stat-note">ONE ROUND MISS · ONE LIFE</span>
+          <span class="clean-stat-title">목숨</span>
+          <strong id="rope-time">♥♥♥</strong>
         </div>
       </section>
 
       <section class="canvas-frame rope-frame" aria-label="네 캐릭터가 각자 점프하는 단체 줄넘기 게임 화면">
         <canvas id="ropeCanvas"></canvas>
-        <div id="rope-input-status" class="input-status">INPUT READY</div>
-        <div id="rope-callout" class="rope-callout hidden" aria-live="assertive">JUMP!</div>
-
-        <div id="rope-rhythm-hud" class="rope-rhythm-hud" data-phase="safe" aria-live="polite">
-          <div class="rope-rhythm-copy">
-            <span id="rope-tempo-label">TEMPO 1 · WARM UP</span>
-            <strong id="rope-beat-text">줄이 돌아오는 중</strong>
-            <b id="rope-beat-time">1.0s</b>
-          </div>
-          <div class="rope-beat-track" aria-hidden="true"><i id="rope-beat-bar"></i><em></em></div>
-          <div class="rope-bonus-row">
-            <span>TEAM COMBO <b id="rope-combo">×0</b></span>
-            <span>FEVER <b id="rope-fever-text">0 / 3</b></span>
-          </div>
-          <div class="rope-fever-track" aria-hidden="true"><i id="rope-fever-bar"></i></div>
-        </div>
+        <div id="rope-callout" class="rope-callout hidden" aria-live="assertive"></div>
 
         <div class="rope-player-controls" aria-label="단체 줄넘기 조작 버튼">
-          <button class="rope-player-button p1" type="button" data-action="forward" aria-label="P1 점프"><span>P1</span><strong>W</strong><small>점프</small></button>
-          <button class="rope-player-button p2" type="button" data-action="backward" aria-label="P2 점프"><span>P2</span><strong>S</strong><small>점프</small></button>
-          <button class="rope-player-button p3" type="button" data-action="left" aria-label="P3 점프"><span>P3</span><strong>A</strong><small>점프</small></button>
-          <button class="rope-player-button p4" type="button" data-action="right" aria-label="P4 점프"><span>P4</span><strong>D</strong><small>점프</small></button>
+          <button class="rope-player-button p1" type="button" data-action="forward" aria-label="P1 점프"><strong>W</strong></button>
+          <button class="rope-player-button p2" type="button" data-action="backward" aria-label="P2 점프"><strong>S</strong></button>
+          <button class="rope-player-button p3" type="button" data-action="left" aria-label="P3 점프"><strong>A</strong></button>
+          <button class="rope-player-button p4" type="button" data-action="right" aria-label="P4 점프"><strong>D</strong></button>
         </div>
 
         <div id="rope-countdown" class="overlay countdown-overlay hidden">
@@ -89,30 +61,26 @@
 
         <div id="rope-start-modal" class="overlay modal-overlay ready-check-modal">
           <div class="modal-card rope-modal">
-            <div class="modal-badge rope-badge">TEAM ROPE</div>
-            <h2 class="modal-title">4명이 각자 뛰는<br><span>단체 줄넘기</span></h2>
-            <p class="modal-subtitle">팀 공용 목숨은 3개입니다. 버튼을 눌러 준비하고 같은 버튼을 다시 누르면 취소됩니다. 처음 4회 후 여러 이벤트가 무작위로 등장합니다.</p>
+            <h2 class="modal-title">단체 줄넘기</h2>
+            <p class="modal-subtitle">버튼을 눌러 준비하세요.</p>
             <div class="role-grid">
-              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
-              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">눌러서 준비</button><span class="ready-state">대기 중</span></div>
-              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>점프</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">눌러서 준비</button><span class="ready-state">대기 중</span></div>
-              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>점프</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">눌러서 준비</button><span class="ready-state">대기 중</span></div>
+              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">준비</button></div>
+              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">준비</button></div>
+              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>점프</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">준비</button></div>
+              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>점프</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">준비</button></div>
             </div>
-            <div id="rope-ready-progress" class="ready-progress rope-ready-progress" aria-live="polite">준비 0 / 4</div>
+            <div id="rope-ready-progress" class="ready-progress rope-ready-progress" aria-live="polite">0 / 4</div>
           </div>
         </div>
 
         <div id="rope-gameover-modal" class="overlay modal-overlay hidden">
           <div class="modal-card gameover-card">
-            <div id="rope-gameover-badge" class="modal-badge rope-badge">TEAM LIFE 0</div>
-            <h2 id="rope-gameover-message" class="modal-title">우리 팀 호흡이 좋아요!</h2>
+            <h2 id="rope-gameover-message" class="modal-title">게임 종료</h2>
             <div class="score-summary rope-summary">
-              <div class="summary-box"><span class="summary-label">TEAM SCORE</span><strong id="rope-final-score">0</strong></div>
-              <div class="summary-box"><span class="summary-label">PERFECT</span><strong id="rope-perfect-count">0</strong></div>
+              <div class="summary-box"><span class="summary-label">점수</span><strong id="rope-final-score">0</strong></div>
+              <div class="summary-box"><span class="summary-label">성공</span><strong id="rope-perfect-count">0</strong></div>
             </div>
-            <div id="rope-player-results" class="rope-player-results" aria-label="플레이어별 결과"></div>
-            <p class="modal-footnote">ESP32 버튼 4개 중 아무 버튼이나 눌러 준비 화면으로 돌아가세요.</p>
-            <button id="rope-restart-btn" class="btn btn-primary btn-large rope-restart" type="button">다시 준비하기 <span aria-hidden="true">↻</span></button>
+            <button id="rope-restart-btn" class="btn btn-primary btn-large game-restart" type="button">다시하기</button>
           </div>
         </div>
       </section>

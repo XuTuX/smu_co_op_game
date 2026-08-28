@@ -143,6 +143,15 @@ pairGame.applyRoundMode(false);
 assert.deepStrictEqual(Array.from(pairGame.commandTargets), ['forward', 'backward'], 'pair mode should choose two living players');
 assert(pairGame.getModeHtml().includes('yellow') && pairGame.getModeHtml().includes('red'), 'pair instruction should color both requested names');
 
+const oneShotCommandGame = makeHarness();
+oneShotCommandGame.random = () => 0.9;
+oneShotCommandGame.modeBag = ['solo'];
+oneShotCommandGame.selectRandomMode();
+assert.strictEqual(oneShotCommandGame.modePassesRemaining, 1, 'a solo target must be announced for one rope pass only');
+oneShotCommandGame.modeBag = ['pair'];
+oneShotCommandGame.selectRandomMode();
+assert.strictEqual(oneShotCommandGame.modePassesRemaining, 1, 'a pair target must be announced for one rope pass only');
+
 const doubleGame = makeHarness();
 doubleGame.currentMode = 'double';
 doubleGame.applyRoundMode(false);

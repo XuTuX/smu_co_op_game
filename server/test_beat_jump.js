@@ -17,6 +17,11 @@ const GameClass = context.window.TestBeatJumpGame;
 
 assert(!source.includes("'MISS!'"), 'the game should not show a miss callout');
 assert(!pageSource.includes('실수') && !pageSource.includes('ONE MISS'), 'the page should not show miss wording');
+assert(!source.includes('player.misses') && !source.includes('beat-player-results'), 'the game should not expose individual failure records');
+assert(!source.includes('CLEAR +1') && !source.includes('WATCH LEFT'), 'the playfield should stay free of redundant helper text');
+assert(!pageSource.includes('INPUT READY') && !pageSource.includes('TEAM SCORE'), 'the page should avoid decorative microcopy');
+assert(!source.includes('drawJumpOrder'), 'the playfield should not show 1-2-3-4 order markers');
+assert(!source.includes('오른쪽 ${count}개') && !source.includes('왼쪽 ${count}개'), 'warnings should not use verbose direction sentences');
 
 function makeHarness() {
   const game = Object.create(GameClass.prototype);
@@ -31,11 +36,13 @@ function makeHarness() {
   game.groundY = 680;
   game.jumpVelocity = 790;
   game.gameDuration = 60;
+  game.damageCooldownDuration = 2;
   game.elapsed = 0;
   game.waveNumber = 0;
   game.nextDirection = 1;
   game.score = 0;
   game.sharedLives = 3;
+  game.damageCooldown = 0;
   game.combo = 0;
   game.bestCombo = 0;
   game.feverGauge = 0;
@@ -46,9 +53,9 @@ function makeHarness() {
   game.hitFreeze = 0;
   game.players = game.createPlayers();
   game.waveTypes = {
-    cone: { width: 84, height: 62, speed: 430, color: '#fb923c' },
-    barrel: { width: 78, height: 78, speed: 480, color: '#a16207' },
-    cart: { width: 132, height: 88, speed: 590, color: '#8b5cf6' }
+    cone: { width: 92, height: 66, speed: 430, color: '#fb923c' },
+    barrel: { width: 84, height: 84, speed: 480, color: '#22d3ee' },
+    cart: { width: 136, height: 92, speed: 590, color: '#8b5cf6' }
   };
   game.soundEngine = { playBeep() {}, playSuccess() {}, playCrash() {} };
   game.showCallout = () => {};
@@ -62,6 +69,10 @@ const leftObstacle = directionGame.makeObstacle('cone', 1, 0, 1);
 const rightObstacle = directionGame.makeObstacle('cone', -1, 0, 2);
 assert(leftObstacle.x < directionGame.playerXs[0] && leftObstacle.direction === 1, 'left obstacle should enter toward P1 first');
 assert(rightObstacle.x > directionGame.playerXs[3] && rightObstacle.direction === -1, 'right obstacle should enter toward P4 first');
+assert.notStrictEqual(leftObstacle.variant, rightObstacle.variant, 'successive waves should vary obstacle details');
+const gearObstacle = directionGame.makeObstacle('barrel', 1, 0, 1);
+assert.strictEqual(gearObstacle.color, '#22d3ee', 'the old brown ball should be replaced by a bright cyan gear');
+assert(source.includes('three-spike crystal cluster') && source.includes('Fast hover robot'), 'all three obstacle families should have distinct silhouettes');
 
 const jumpGame = makeHarness();
 jumpGame.soundEngine.playBeep = () => {};
@@ -80,6 +91,22 @@ judgeGame.judgePlayer(judgeGame.players[3], leftObstacle);
 assert.strictEqual(judgeGame.sharedLives, 2, 'one miss should remove exactly one shared team life');
 assert.deepStrictEqual(judgeGame.players.map((player) => player.lives), [3, 3, 3, 3], 'timing jump should not use individual lives');
 assert.strictEqual(judgeGame.wave.perfect, false, 'any individual miss should break the perfect wave');
+judgeGame.judgePlayer(judgeGame.players[0], leftObstacle);
+assert.strictEqual(judgeGame.sharedLives, 2, 'the short team invulnerability window should block immediate repeat damage');
+assert.strictEqual(judgeGame.damageCooldown, 2, 'a collision should start a two-second team invulnerability window');
+judgeGame.damageCooldown = 0;
+judgeGame.judgePlayer(judgeGame.players[0], leftObstacle);
+assert.strictEqual(judgeGame.sharedLives, 1, 'damage should resume after invulnerability expires');
+
+const timingGame = makeHarness();
+const timingObstacle = timingGame.makeObstacle('barrel', 1, 0, 1);
+const timingPlayer = timingGame.players[0];
+timingObstacle.x = timingPlayer.x - 40;
+assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle), false, 'judgment should wait until the obstacle is visually under the player');
+timingObstacle.x = timingPlayer.x - 10;
+assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle), true, 'judgment should occur close to the player center');
+timingPlayer.height = 55;
+assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), true, 'a clearly airborne player should pass the revised judgment');
 
 const warningGame = makeHarness();
 warningGame.warning = { plan: { count: 1, directions: [1], label: '왼쪽 1개', type: 'cone' }, elapsed: 0, duration: 1.25 };
@@ -105,6 +132,7 @@ const progressionGame = makeHarness();
 progressionGame.waveNumber = 0;
 let plan = progressionGame.chooseWavePlan();
 assert.strictEqual(plan.count, 1, 'the opening should use one obstacle');
+assert.strictEqual(plan.label, '→ ×1', 'warning labels should use only an arrow and count');
 progressionGame.waveNumber = 3;
 plan = progressionGame.chooseWavePlan();
 assert.strictEqual(plan.count, 2, 'the middle section should introduce two obstacles');

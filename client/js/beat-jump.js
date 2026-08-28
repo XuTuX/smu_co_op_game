@@ -21,10 +21,11 @@ class BeatJumpGame {
     this.jumpVelocity = 790;
     this.gravity = 1950;
     this.gameDuration = 60;
+    this.damageCooldownDuration = 2;
     this.waveTypes = {
-      cone: { label: '삼각 장애물', width: 84, height: 62, speed: 430, color: '#fb923c' },
-      barrel: { label: '통나무', width: 78, height: 78, speed: 480, color: '#a16207' },
-      cart: { label: '스피드 카트', width: 132, height: 88, speed: 590, color: '#8b5cf6' }
+      cone: { label: '가시', width: 92, height: 66, speed: 430, color: '#fb923c' },
+      barrel: { label: '회전 기어', width: 84, height: 84, speed: 480, color: '#22d3ee' },
+      cart: { label: '호버 로봇', width: 136, height: 92, speed: 590, color: '#8b5cf6' }
     };
 
     this.state = 'READY';
@@ -35,7 +36,6 @@ class BeatJumpGame {
     this.readyStartTimer = null;
     this.countdownInterval = null;
     this.countdownHideTimer = null;
-    this.calloutTimer = null;
     this.directionHideTimer = null;
 
     this.bindUI();
@@ -57,7 +57,7 @@ class BeatJumpGame {
   createPlayers() {
     return this.playerMeta.map((meta, index) => ({
       ...meta, x: this.playerXs[index], height: 0, velocity: 0,
-      lives: 3, clears: 0, misses: 0, stunned: 0, flash: 0,
+      lives: 3, clears: 0, stunned: 0, flash: 0,
       squash: 0, lastJumpAt: -Infinity, eliminated: false
     }));
   }
@@ -65,16 +65,16 @@ class BeatJumpGame {
   bindUI() {
     document.getElementById('beat-restart-btn').addEventListener('click', () => this.beginReadyCheck());
     document.getElementById('beat-sound-btn').addEventListener('click', (event) => {
-      this.soundEngine.isMuted = !this.soundEngine.isMuted;
-      event.currentTarget.textContent = this.soundEngine.isMuted ? '🔇' : '🔊';
+      const muted = this.soundEngine.toggleFromButton();
+      event.currentTarget.textContent = muted ? '🔇' : '🔊';
     });
   }
 
   beginReadyCheck() {
+    this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
-    window.clearTimeout(this.calloutTimer);
     window.clearTimeout(this.directionHideTimer);
     this.state = 'RESETTING_READY';
     this.readyPlayers = this.createInputState();
@@ -83,7 +83,6 @@ class BeatJumpGame {
     document.getElementById('beat-countdown').classList.add('hidden');
     document.getElementById('beat-gameover-modal').classList.add('hidden');
     document.getElementById('beat-start-modal').classList.remove('hidden');
-    document.getElementById('beat-callout').classList.add('hidden');
     document.getElementById('beat-direction').classList.add('hidden');
     this.resetGame();
     this.state = 'READY';
@@ -121,11 +120,11 @@ class BeatJumpGame {
     document.querySelectorAll('#beat-start-modal [data-ready-action]').forEach((card) => {
       const ready = Boolean(this.readyPlayers[card.dataset.readyAction]);
       card.classList.toggle('is-ready', ready);
-      const status = card.querySelector('.ready-state');
-      if (status) status.textContent = ready ? '준비 완료 ✓ · 다시 누르면 취소' : '대기 중';
+      const button = card.querySelector('.ready-tap');
+      if (button) button.textContent = ready ? '취소' : '준비';
     });
     const progress = document.getElementById('beat-ready-progress');
-    progress.textContent = count === 4 ? '모두 준비 완료!' : `준비 ${count} / 4`;
+    progress.textContent = `${count} / 4`;
     progress.classList.toggle('all-ready', count === 4);
   }
 
@@ -152,6 +151,7 @@ class BeatJumpGame {
         window.clearInterval(this.countdownInterval);
         text.textContent = 'GO!';
         this.soundEngine.playCountdown(0);
+        this.soundEngine.startMusic('timing');
         this.previousPlayInputs = this.createInputState();
         this.state = 'PLAYING';
         this.countdownHideTimer = window.setTimeout(() => overlay.classList.add('hidden'), 500);
@@ -165,6 +165,7 @@ class BeatJumpGame {
     this.timeRemaining = this.gameDuration;
     this.score = 0;
     this.sharedLives = 3;
+    this.damageCooldown = 0;
     this.combo = 0;
     this.bestCombo = 0;
     this.feverGauge = 0;
@@ -175,7 +176,6 @@ class BeatJumpGame {
     this.warning = null;
     this.wave = null;
     this.obstacles = [];
-    this.feedbacks = [];
     this.particles = [];
     this.shake = 0;
     this.hitFreeze = 0;
@@ -187,15 +187,11 @@ class BeatJumpGame {
 
   updateHardwareStatus(connected) {
     document.getElementById('beat-hardware-badge').className = connected ? 'status-badge connected' : 'status-badge local';
-    document.getElementById('beat-hardware-text').textContent = connected ? 'ESP32 LIVE' : 'PC TEST MODE';
+    document.getElementById('beat-hardware-text').textContent = connected ? 'ESP32' : 'PC';
   }
 
   updateInputUI(inputs) {
     document.querySelectorAll('.beat-player-button[data-action]').forEach((button) => button.classList.toggle('active', Boolean(inputs[button.dataset.action])));
-    const active = this.playerMeta.filter((meta) => inputs[meta.action]).map((meta) => meta.label);
-    const status = document.getElementById('beat-input-status');
-    status.textContent = active.length ? `JUMP: ${active.join(' + ')}` : 'INPUT READY';
-    status.classList.toggle('active', active.length > 0);
   }
 
   handleJumpInput(inputs) {
@@ -223,17 +219,22 @@ class BeatJumpGame {
     const firstDirection = this.nextDirection;
     this.nextDirection *= -1;
     let directions = Array(count).fill(firstDirection);
-    let label = firstDirection > 0 ? `왼쪽 ${count}개` : `오른쪽 ${count}개`;
+    let label = '';
 
     if (count > 1 && this.waveNumber % 3 === 2) {
       directions = Array.from({ length: count }, (_, index) => index % 2 === 0 ? firstDirection : -firstDirection);
-      label = count === 2 ? '양쪽에서 순서대로' : '양쪽 교차 · 순차 3개';
     } else if (count === 3 && this.waveNumber % 3 === 1) {
       directions = [firstDirection, firstDirection, -firstDirection];
-      label = firstDirection > 0 ? '왼쪽 둘 · 오른쪽 하나' : '오른쪽 둘 · 왼쪽 하나';
     }
+    label = this.formatWavePlan(directions);
 
     return { count, directions, label, type: this.chooseObstacleType() };
+  }
+
+  formatWavePlan(directions) {
+    const arrows = directions.map((direction) => direction > 0 ? '→' : '←');
+    const sequence = new Set(directions).size > 1 ? arrows.join(' ') : arrows[0];
+    return `${sequence} ×${directions.length}`;
   }
 
   beginWarning() {
@@ -249,19 +250,11 @@ class BeatJumpGame {
     const arrow = document.getElementById('beat-direction-arrow');
     panel.classList.remove('hidden');
     const mixed = new Set(plan.directions).size > 1;
-    if (mixed) {
-      panel.dataset.direction = 'left';
-      text.textContent = plan.label;
-      arrow.textContent = '→ ←';
-    } else if (plan.directions[0] > 0) {
-      panel.dataset.direction = 'left';
-      text.textContent = plan.label;
-      arrow.textContent = '→';
-    } else {
-      panel.dataset.direction = 'right';
-      text.textContent = plan.label;
-      arrow.textContent = '←';
-    }
+    panel.dataset.direction = mixed || plan.directions[0] > 0 ? 'left' : 'right';
+    arrow.textContent = mixed
+      ? plan.directions.map((direction) => direction > 0 ? '→' : '←').join(' ')
+      : (plan.directions[0] > 0 ? '→' : '←');
+    text.textContent = `×${plan.count}`;
   }
 
   updateWarning(dt) {
@@ -278,7 +271,7 @@ class BeatJumpGame {
       type: baseType, direction, x: startX, y: this.groundY,
       width: config.width, height: config.height,
       speed: config.speed * progressBoost, color: config.color,
-      judged: new Set(), waveId
+      variant: waveId % 3, judged: new Set(), waveId
     };
   }
 
@@ -319,9 +312,7 @@ class BeatJumpGame {
       obstacle.x += obstacle.direction * obstacle.speed * dt;
       for (const player of this.players) {
         if (player.eliminated || obstacle.judged.has(player.action)) continue;
-        const approaching = obstacle.direction > 0 ? obstacle.x <= player.x + 35 : obstacle.x >= player.x - 35;
-        if (!approaching) continue;
-        if (Math.abs(obstacle.x - player.x) > obstacle.width * 0.42 + 30) continue;
+        if (!this.shouldJudgeObstacle(player, obstacle)) continue;
         obstacle.judged.add(player.action);
         this.judgePlayer(player, obstacle);
       }
@@ -337,27 +328,35 @@ class BeatJumpGame {
     return obstacle.direction > 0 ? obstacle.x < 1920 : obstacle.x > -320;
   }
 
+  shouldJudgeObstacle(player, obstacle) {
+    const centerTolerance = 12;
+    return obstacle.direction > 0
+      ? obstacle.x >= player.x - centerTolerance
+      : obstacle.x <= player.x + centerTolerance;
+  }
+
+  isSuccessfulJump(player, obstacle) {
+    const requiredHeight = Math.min(72, Math.max(38, obstacle.height * 0.62));
+    const timeSinceJump = this.elapsed - player.lastJumpAt;
+    const takeoffGrace = timeSinceJump >= 0 && timeSinceJump <= 0.2 && player.velocity > 0;
+    return player.height >= requiredHeight || takeoffGrace;
+  }
+
   judgePlayer(player, obstacle) {
     if (this.sharedLives <= 0) return;
-    const requiredHeight = Math.min(78, obstacle.height * 0.72);
-    const onBeatJump = this.elapsed - player.lastJumpAt <= 0.17;
-    if (player.height >= requiredHeight || onBeatJump) {
+    if (this.isSuccessfulJump(player, obstacle)) {
       player.clears++;
       player.flash = 0.25;
       this.score += 1;
       this.wave.successes++;
-      this.addFeedback(player, 'CLEAR +1', '#a7f3d0');
       this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 8);
     } else {
-      this.sharedLives = Math.max(0, this.sharedLives - 1);
-      player.misses++;
-      player.stunned = 0.65;
-      player.flash = 0.75;
       this.wave.perfect = false;
-      this.spawnBurst(player.x, this.groundY - 35, '#fb7185', 16);
-      this.soundEngine.playCrash();
-      this.shake = 13;
-      this.hitFreeze = 0.09;
+      if (this.damageCooldown <= 0) {
+        this.sharedLives = Math.max(0, this.sharedLives - 1);
+        this.damageCooldown = this.damageCooldownDuration;
+        this.soundEngine.playCrash();
+      }
     }
     if (this.sharedLives <= 0) this.endGame('ALL_OUT');
   }
@@ -378,6 +377,7 @@ class BeatJumpGame {
       return;
     }
     this.elapsed += dt;
+    this.damageCooldown = Math.max(0, this.damageCooldown - dt);
     this.passPulse = Math.max(0, this.passPulse - dt * 2.5);
     this.shake = Math.max(0, this.shake - dt * 25);
 
@@ -407,17 +407,8 @@ class BeatJumpGame {
     const time = document.getElementById('beat-time');
     time.textContent = this.sharedLives > 0 ? '♥'.repeat(this.sharedLives) : '0';
     time.classList.toggle('urgent', this.sharedLives === 1);
+    document.querySelector('.beat-time-card').classList.toggle('is-invulnerable', this.damageCooldown > 0);
   }
-
-  showCallout(message, duration) {
-    window.clearTimeout(this.calloutTimer);
-    const callout = document.getElementById('beat-callout');
-    callout.textContent = message;
-    callout.classList.remove('hidden');
-    this.calloutTimer = window.setTimeout(() => { this.calloutTimer = null; callout.classList.add('hidden'); }, duration);
-  }
-
-  addFeedback(player, text, color) { this.feedbacks.push({ x: player.x, y: this.groundY - 235 - player.height, text, color, life: 1 }); }
 
   spawnBurst(x, y, color, amount) {
     for (let i = 0; i < amount; i++) {
@@ -428,8 +419,6 @@ class BeatJumpGame {
   }
 
   updateEffects(dt) {
-    for (const feedback of this.feedbacks) { feedback.y -= 70 * dt; feedback.life -= dt * 1.25; }
-    this.feedbacks = this.feedbacks.filter((feedback) => feedback.life > 0);
     for (const particle of this.particles) { particle.x += particle.vx * dt; particle.y += particle.vy * dt; particle.vy += 560 * dt; particle.life -= dt; }
     this.particles = this.particles.filter((particle) => particle.life > 0);
   }
@@ -437,14 +426,12 @@ class BeatJumpGame {
   endGame(reason) {
     if (this.state !== 'PLAYING') return;
     this.state = 'GAMEOVER';
+    this.soundEngine.stopMusic();
     this.inputManager.resetAll();
-    document.getElementById('beat-callout').classList.add('hidden');
     document.getElementById('beat-direction').classList.add('hidden');
-    document.getElementById('beat-gameover-badge').textContent = 'TEAM LIFE 0';
-    document.getElementById('beat-gameover-message').textContent = this.waveNumber >= 12 ? '양쪽 웨이브까지 돌파!' : this.waveNumber >= 6 ? '여러 개 타이밍도 좋아요!' : `${this.waveNumber}웨이브 돌파 · 다시 기록 도전!`;
+    document.getElementById('beat-gameover-message').textContent = '게임 종료';
     document.getElementById('beat-final-score').textContent = this.score;
     document.getElementById('beat-best-combo').textContent = this.waveNumber;
-    document.getElementById('beat-player-results').innerHTML = this.players.map((player, index) => `<div class="beat-result-card p${index + 1}"><span>${player.label} · ${player.key}</span><strong>${player.clears}회</strong></div>`).join('');
     document.getElementById('beat-gameover-modal').classList.remove('hidden');
   }
 
@@ -455,25 +442,10 @@ class BeatJumpGame {
     ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1600, 900);
     ctx.fillStyle = 'rgba(255,255,255,.08)';
     for (let x = 50; x < 1600; x += 115) { ctx.beginPath(); ctx.arc(x, 105 + x % 210 * .13, 14, 0, Math.PI * 2); ctx.fill(); }
-    ctx.fillStyle = '#e0f2fe'; ctx.font = '950 40px "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('WATCH LEFT  ←   ·   →  WATCH RIGHT', 800, 78);
     ctx.fillStyle = '#47747d'; ctx.fillRect(0, this.groundY, 1600, 220);
     ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 5; ctx.setLineDash([48, 30]);
     ctx.beginPath(); ctx.moveTo(0, this.groundY + 100); ctx.lineTo(1600, this.groundY + 100); ctx.stroke(); ctx.setLineDash([]);
     ctx.strokeStyle = '#a5f3fc'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, this.groundY); ctx.lineTo(1600, this.groundY); ctx.stroke();
-    if (this.warning) this.drawJumpOrder();
-  }
-
-  drawJumpOrder() {
-    const ctx = this.ctx;
-    const firstDirection = this.warning.plan.directions[0];
-    const order = firstDirection < 0 ? [...this.players].reverse() : this.players;
-    ctx.textAlign = 'center';
-    order.forEach((player, index) => {
-      ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#15202b'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(player.x, 350, 27, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#15202b'; ctx.font = '950 22px system-ui'; ctx.fillText(String(index + 1), player.x, 358);
-    });
   }
 
   drawPlayer(player, index) {
@@ -536,36 +508,84 @@ class BeatJumpGame {
     ctx.textAlign = 'center';
     ctx.fillText(player.label,0,-39);
     ctx.restore();
-    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '900 19px system-ui'; ctx.fillText(`${player.key} · ${player.clears}회`,player.x,730);
-    ctx.fillStyle = '#a5f3fc'; ctx.font = '900 18px system-ui'; ctx.fillText(`통과 ${player.clears}`,player.x,760);
     this.canvas.dataset[`p${index + 1}Height`] = player.height.toFixed(1);
     this.canvas.dataset[`p${index + 1}Lives`] = String(this.sharedLives);
   }
 
   drawObstacle(obstacle) {
     const ctx = this.ctx;
-    ctx.save(); ctx.translate(obstacle.x, this.groundY); ctx.scale(obstacle.direction, 1);
-    ctx.strokeStyle = '#15202b'; ctx.lineWidth = 7; ctx.lineJoin = 'round';
+    const accent = obstacle.variant % 2 === 0 ? '#facc15' : '#fb7185';
+    ctx.save();
+    ctx.translate(obstacle.x, this.groundY);
+    ctx.scale(obstacle.direction, 1);
+    ctx.strokeStyle = '#15202b';
+    ctx.lineWidth = 7;
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(3, 18, 25, .35)';
+    ctx.beginPath(); ctx.ellipse(0, 7, obstacle.width * .58, 11, 0, 0, Math.PI * 2); ctx.fill();
+
     if (obstacle.type === 'cone') {
-      ctx.fillStyle = obstacle.color; ctx.beginPath(); ctx.moveTo(-38,0); ctx.lineTo(0,-obstacle.height); ctx.lineTo(38,0); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.fillRect(-23,-31,46,13);
+      // A three-spike crystal cluster: low, wide, and clearly jumpable.
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath(); ctx.moveTo(-46,0); ctx.lineTo(-27,-44-obstacle.variant*4); ctx.lineTo(-8,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = obstacle.color;
+      ctx.beginPath(); ctx.moveTo(-24,0); ctx.lineTo(1,-obstacle.height); ctx.lineTo(27,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(34,-38+obstacle.variant*3); ctx.lineTo(50,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff7ed';
+      ctx.beginPath(); ctx.moveTo(-5,-48); ctx.lineTo(2,-58); ctx.lineTo(9,-42); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#15202b';
+      ctx.beginPath(); ctx.roundRect(-51,-10,102,15,7); ctx.fill();
     } else if (obstacle.type === 'barrel') {
-      ctx.fillStyle = obstacle.color; ctx.beginPath(); ctx.arc(0,-obstacle.height/2,obstacle.width/2,0,Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-32,-50); ctx.lineTo(32,-27); ctx.stroke();
+      // Bright rolling gear replaces the old brown ball.
+      ctx.save();
+      ctx.translate(0, -obstacle.height / 2);
+      ctx.rotate(obstacle.x * .022 * obstacle.direction);
+      ctx.fillStyle = accent;
+      for (let index = 0; index < 10; index++) {
+        ctx.save(); ctx.rotate(index * Math.PI / 5); ctx.fillRect(-8,-51,16,19); ctx.restore();
+      }
+      ctx.fillStyle = obstacle.color;
+      ctx.beginPath(); ctx.arc(0,0,39,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 8;
+      for (let index = 0; index < 4; index++) {
+        ctx.save(); ctx.rotate(index * Math.PI / 2); ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(0,-31); ctx.stroke(); ctx.restore();
+      }
+      ctx.fillStyle = '#fb7185'; ctx.strokeStyle = '#15202b'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(0,0,13,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.restore();
     } else {
-      ctx.fillStyle = obstacle.color; ctx.beginPath(); ctx.roundRect(-65,-70,130,58,18); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#c4b5fd'; ctx.beginPath(); ctx.moveTo(-34,-70); ctx.lineTo(-7,-116); ctx.lineTo(34,-70); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#15202b'; ctx.beginPath(); ctx.arc(-42,-5,18,0,Math.PI*2); ctx.arc(42,-5,18,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = '950 22px system-ui'; ctx.textAlign = 'center'; ctx.fillText('⚡',0,-34);
+      // Fast hover robot with a canopy, face, and two glowing thrusters.
+      ctx.fillStyle = '#67e8f9';
+      ctx.beginPath(); ctx.ellipse(-43,-5,20,10,0,0,Math.PI*2); ctx.ellipse(43,-5,20,10,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.moveTo(-53,-4); ctx.lineTo(-43,16); ctx.lineTo(-33,-4); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(33,-4); ctx.lineTo(43,16); ctx.lineTo(53,-4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = obstacle.color;
+      ctx.beginPath(); ctx.roundRect(-68,-70,136,62,22); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c4b5fd';
+      ctx.beginPath(); ctx.ellipse(0,-70,38,34,0,Math.PI,0); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(-18,-42,11,0,Math.PI*2); ctx.arc(18,-42,11,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#15202b';
+      ctx.beginPath(); ctx.arc(-15,-40,5,0,Math.PI*2); ctx.arc(15,-40,5,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#15202b'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(-12,-22); ctx.lineTo(12,-22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-104); ctx.lineTo(0,-119); ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.arc(0,-125,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
     }
-    ctx.fillStyle = '#fff'; ctx.font = '950 24px system-ui'; ctx.textAlign = 'center'; ctx.fillText(obstacle.direction > 0 ? '→' : '←',0,-obstacle.height-22);
+    ctx.fillStyle = '#fff';
+    ctx.font = '950 24px system-ui';
+    ctx.textAlign = 'center';
+    const arrowY = obstacle.type === 'cart' ? -158 : -obstacle.height - 28;
+    ctx.fillText(obstacle.direction > 0 ? '→' : '←',0,arrowY);
     ctx.restore();
   }
 
   drawEffects() {
     const ctx = this.ctx;
     for (const p of this.particles) { ctx.globalAlpha = Math.min(1,p.life*2); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); }
-    for (const f of this.feedbacks) { ctx.globalAlpha = Math.min(1,f.life*2); ctx.font = '950 34px system-ui'; ctx.textAlign = 'center'; ctx.lineWidth = 8; ctx.strokeStyle = '#15202b'; ctx.strokeText(f.text,f.x,f.y); ctx.fillStyle = f.color; ctx.fillText(f.text,f.x,f.y); }
     ctx.globalAlpha = 1;
   }
 
@@ -594,6 +614,7 @@ class BeatJumpGame {
     this.canvas.dataset.waveNumber = String(this.waveNumber);
     this.canvas.dataset.combo = String(this.combo);
     this.canvas.dataset.sharedLives = String(this.sharedLives);
+    this.canvas.dataset.damageCooldown = this.damageCooldown.toFixed(2);
   }
 
   loop(timestamp) {

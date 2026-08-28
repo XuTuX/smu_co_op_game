@@ -59,9 +59,9 @@ class Game {
       null,
       () => this.beginReadyCheck(),
       () => {
-        this.soundEngine.isMuted = !this.soundEngine.isMuted;
+        const muted = this.soundEngine.toggleFromButton();
         const icon = document.getElementById('sound-icon');
-        if (icon) icon.textContent = this.soundEngine.isMuted ? '🔇' : '🔊';
+        if (icon) icon.textContent = muted ? '🔇' : '🔊';
       }
     );
 
@@ -89,6 +89,7 @@ class Game {
   }
 
   beginReadyCheck() {
+    this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);
     window.clearTimeout(this.countdownHideTimer);
@@ -140,14 +141,12 @@ class Game {
     document.querySelectorAll('#start-modal [data-ready-action]').forEach((card) => {
       const isReady = Boolean(this.readyPlayers[card.dataset.readyAction]);
       card.classList.toggle('is-ready', isReady);
-      const status = card.querySelector('.ready-state');
-      if (status) status.textContent = isReady ? '준비 완료 ✓ · 다시 누르면 취소' : '대기 중';
+      const button = card.querySelector('.ready-tap');
+      if (button) button.textContent = isReady ? '취소' : '준비';
     });
     const progress = document.getElementById('parking-ready-progress');
     if (progress) {
-      progress.textContent = readyCount === this.readyActions.length
-        ? '모두 준비 완료!'
-        : `준비 ${readyCount} / ${this.readyActions.length}`;
+      progress.textContent = `${readyCount} / ${this.readyActions.length}`;
       progress.classList.toggle('all-ready', readyCount === this.readyActions.length);
     }
   }
@@ -198,6 +197,7 @@ class Game {
         window.clearInterval(this.countdownInterval);
         this.ui.showCountdown(0); // "GO!"
         this.soundEngine.playCountdown(0);
+        this.soundEngine.startMusic('parking');
         this.state = 'PLAYING';
         this.countdownHideTimer = window.setTimeout(() => this.ui.hideCountdown(), 500);
       }
@@ -278,6 +278,7 @@ class Game {
     setTimeout(() => {
       if (this.state !== 'TRANSITION') return;
       this.state = 'GAMEOVER';
+      this.soundEngine.stopMusic();
       this.ui.showGameClear(this.score, this.parkCount);
     }, 850);
   }
@@ -374,6 +375,7 @@ class Game {
       if (this.timeRemaining <= 0) {
         this.timeRemaining = 0;
         this.state = 'GAMEOVER';
+        this.soundEngine.stopMusic();
         this.ui.updateTime(0);
         this.ui.showGameOver(this.score, this.parkCount);
         this.inputManager.resetAll();

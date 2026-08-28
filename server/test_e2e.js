@@ -119,7 +119,7 @@ async function runTest() {
       response.on('end', () => resolve({ statusCode: response.statusCode, body }));
     }).on('error', reject);
   });
-  if (jumpRopeHtml.statusCode !== 200 || !jumpRopeHtml.body.includes('4명이 각자 뛰는')) {
+  if (jumpRopeHtml.statusCode !== 200 || !jumpRopeHtml.body.includes('버튼을 눌러 준비하세요')) {
     throw new Error(`Expected team jump-rope page, got HTTP ${jumpRopeHtml.statusCode}`);
   }
   console.log('✅ TEST PASSED: four-player jump-rope page is served');
@@ -132,7 +132,7 @@ async function runTest() {
       response.on('end', () => resolve({ statusCode: response.statusCode, body }));
     }).on('error', reject);
   });
-  if (beatJumpHtml.statusCode !== 200 || !beatJumpHtml.body.includes('장애물 개수와 좌우 진입 순서')) {
+  if (beatJumpHtml.statusCode !== 200 || !beatJumpHtml.body.includes('버튼을 눌러 준비하세요')) {
     throw new Error(`Expected beat-jump page, got HTTP ${beatJumpHtml.statusCode}`);
   }
   console.log('✅ TEST PASSED: left/right beat-jump page is served');

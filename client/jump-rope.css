@@ -1,11 +1,11 @@
 .rope-brand { background: #8b5cf6; color: var(--paper); }
 .mode-link.rope-active { background: #8b5cf6; color: var(--paper); }
-.rope-stats { grid-template-columns: 240px 1fr 240px; }
+.rope-stats { grid-template-columns: 1fr 1fr; }
 .rope-score-card { background: #c4b5fd; }
 .rope-time-card { background: #a7f3d0; transform: rotate(1deg); }
 .rope-frame { background: #17152d; }
 .rope-frame #ropeCanvas { display: block; width: 100%; height: 100%; object-fit: contain; }
-.rope-badge, .rope-ready-progress, .rope-restart { background: #8b5cf6; color: #fff; }
+.rope-badge, .rope-ready-progress { background: #8b5cf6; color: #fff; }
 .rope-modal { width: min(820px, calc(100% - 32px)); }
 
 .rope-callout {
@@ -32,44 +32,7 @@
 .rope-command-color.blue { color: #38bdf8; }
 .rope-command-color.green { color: #4ade80; }
 
-.rope-rhythm-hud {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  z-index: 24;
-  width: min(470px, calc(100% - 330px));
-  transform: translateX(-50%);
-  border: 3px solid #161228;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 5px 6px 0 #161228;
-  padding: 10px 13px 9px;
-  color: #161228;
-  pointer-events: none;
-  transition: background 100ms ease, transform 100ms ease;
-}
-.rope-rhythm-hud { display: none; }
 .rope-page.is-playing .rope-callout { top: 30%; }
-.rope-rhythm-copy { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
-.rope-rhythm-copy span { grid-column: 1 / -1; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 9px; font-weight: 950; letter-spacing: .12em; }
-.rope-rhythm-copy strong { font-size: clamp(15px, 2vw, 23px); line-height: 1; }
-.rope-rhythm-copy b { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 19px; }
-.rope-beat-track, .rope-fever-track { position: relative; overflow: hidden; border: 2px solid #161228; border-radius: 999px; background: #e7e5e4; }
-.rope-beat-track { height: 16px; margin-top: 7px; }
-.rope-beat-track i, .rope-fever-track i { display: block; width: 0; height: 100%; background: #8b5cf6; transition: width 45ms linear, background 80ms ease; }
-.rope-beat-track em { position: absolute; top: -3px; right: 14%; width: 5px; height: 18px; border-radius: 9px; background: #161228; }
-.rope-bonus-row { display: flex; justify-content: space-between; margin: 6px 2px 4px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 9px; font-weight: 950; letter-spacing: .05em; }
-.rope-bonus-row b { font-size: 12px; }
-.rope-fever-track { height: 9px; }
-.rope-fever-track i { background: linear-gradient(90deg, #f97316, #facc15); }
-.rope-rhythm-hud[data-phase="ready"] { background: #fef3c7; }
-.rope-rhythm-hud[data-phase="ready"] .rope-beat-track i { background: #f59e0b; }
-.rope-rhythm-hud[data-phase="jump"] { background: #fb7185; transform: translateX(-50%) scale(1.035); }
-.rope-rhythm-hud[data-phase="jump"] .rope-beat-track i { background: #e11d48; }
-.rope-rhythm-hud[data-phase="result"] { background: #a7f3d0; }
-.rope-rhythm-hud.is-fever { background: #fef08a; box-shadow: 5px 6px 0 #161228, 0 0 28px rgba(250,204,21,.8); animation: fever-hud 420ms ease-in-out infinite alternate; }
-
-@keyframes fever-hud { to { filter: saturate(1.3) brightness(1.07); } }
 
 .rope-player-controls {
   position: absolute;
@@ -82,7 +45,7 @@
 }
 
 .rope-player-button {
-  min-height: 68px;
+  min-height: 58px;
   border: 3px solid var(--ink);
   border-radius: 16px;
   box-shadow: 4px 5px 0 var(--ink);
@@ -90,23 +53,15 @@
   touch-action: none;
   transition: transform 80ms ease, box-shadow 80ms ease, filter 80ms ease;
 }
-.rope-player-button span, .rope-player-button small { display: block; font-size: 9px; font-weight: 950; }
-.rope-player-button strong { display: block; font-size: 24px; line-height: 1; }
+.rope-player-button strong { display: block; font-size: 26px; line-height: 1; }
 .rope-player-button.p1 { background: #facc15; }
 .rope-player-button.p2 { background: #fb7185; }
 .rope-player-button.p3 { background: #38bdf8; }
 .rope-player-button.p4 { background: #4ade80; }
 .rope-player-button.active, .rope-player-button:active { transform: translate(3px, 3px); box-shadow: 1px 2px 0 var(--ink); filter: brightness(1.12); }
 
-.rope-summary { grid-template-columns: 1fr 1fr; }
-.rope-player-results { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0 18px; }
-.rope-result-card { border: 2px solid var(--ink); border-radius: 12px; padding: 8px 5px; background: var(--paper); text-align: center; }
-.rope-result-card span { display: block; font-size: 10px; font-weight: 900; }
-.rope-result-card strong { display: block; margin-top: 2px; font-size: 20px; }
-.rope-result-card.p1 { background: #fef08a; }
-.rope-result-card.p2 { background: #fecdd3; }
-.rope-result-card.p3 { background: #bae6fd; }
-.rope-result-card.p4 { background: #bbf7d0; }
+.rope-summary { grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
+.rope-summary .summary-label { font-size: 16px; }
 
 .rope-page.is-playing { overflow: hidden; background: #17152d; }
 .rope-page.is-playing .page-shell { width: 100%; height: 100vh; margin: 0; padding: 0; }
@@ -158,21 +113,9 @@
 @media (max-width: 620px) {
   .rope-page.is-playing .rope-stats .stat-block { min-height: 54px; padding: 6px 9px; gap: 8px; }
   .rope-page.is-playing .rope-stats .stat-block strong { font-size: 29px; }
-  .rope-page.is-playing .rope-stats .stat-label,
-  .rope-page.is-playing .rope-stats .stat-note { font-size: 8px; }
+  .rope-page.is-playing .clean-stat-title { font-size: 14px; }
   .rope-player-controls { right: 8px; bottom: 8px; grid-template-columns: repeat(4, 50px); gap: 5px; }
   .rope-player-button { min-height: 52px; border-radius: 12px; box-shadow: 2px 3px 0 var(--ink); }
   .rope-player-button strong { font-size: 19px; }
-  .rope-player-button small { display: none; }
-  .rope-player-results { grid-template-columns: repeat(2, 1fr); }
-  .rope-rhythm-hud { top: 7px; left: 8px; width: calc(100% - 16px); transform: none; padding: 7px 9px; border-width: 2px; box-shadow: 3px 4px 0 #161228; }
-  .rope-rhythm-hud[data-phase="jump"] { transform: scale(1.01); }
-  .rope-rhythm-copy span { font-size: 7px; }
-  .rope-rhythm-copy strong { font-size: 14px; }
-  .rope-rhythm-copy b { font-size: 14px; }
-  .rope-beat-track { height: 12px; margin-top: 4px; }
-  .rope-bonus-row { margin-top: 4px; font-size: 7px; }
-  .rope-fever-track { height: 7px; }
   .rope-callout { top: 102px; }
-  .rope-page.is-playing #rope-input-status { display: none; }
 }
