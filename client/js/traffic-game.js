@@ -319,32 +319,46 @@ class ObstacleDodgeGame {
       return size;
     }
     if (this.score < 700) return 2;
-    const size = this[key] ? 3 : 2;
-    this[key] = !this[key];
-    return size;
+    if (this.score < 1000) {
+      const size = this[key] ? 3 : 2;
+      this[key] = !this[key];
+      return size;
+    }
+    // Every 1,000 points adds another obstacle, capped at four so a path remains.
+    return Math.min(4, 3 + Math.floor((this.score - 1000) / 1000));
   }
 
   getDifficultyProgress() {
     return Math.min(1, this.score / 800);
   }
 
+  getEndlessTier() {
+    const scoreTier = Math.floor(this.score / 1000);
+    const survivalTier = Math.floor((Number.isFinite(this.elapsed) ? this.elapsed : 0) / 60);
+    return Math.min(4, Math.max(scoreTier, survivalTier));
+  }
+
   getDownSpawnDelay() {
     const progress = this.getDifficultyProgress();
-    return (1.28 - progress * 0.75) * (0.9 + Math.random() * 0.2);
+    const tierMultiplier = Math.pow(0.88, this.getEndlessTier());
+    return Math.max(0.34, (1.28 - progress * 0.75) * tierMultiplier * (0.9 + Math.random() * 0.2));
   }
 
   getSideSpawnDelay() {
     const progress = this.getDifficultyProgress();
-    return (3.9 - progress * 2.3) * (0.92 + Math.random() * 0.16);
+    const tierMultiplier = Math.pow(0.9, this.getEndlessTier());
+    return Math.max(0.9, (3.9 - progress * 2.3) * tierMultiplier * (0.92 + Math.random() * 0.16));
   }
 
   getLaserSpawnDelay() {
     const progress = this.getDifficultyProgress();
-    return 6.4 - progress * 2.6 + Math.random() * 0.6;
+    const tierMultiplier = Math.pow(0.9, this.getEndlessTier());
+    return Math.max(2.2, (6.4 - progress * 2.6 + Math.random() * 0.6) * tierMultiplier);
   }
 
   getLaserWaveSize() {
-    return this.score >= this.doubleLaserScore ? 2 : 1;
+    if (this.score < this.doubleLaserScore) return 1;
+    return Math.min(4, 2 + Math.floor(this.score / 1000));
   }
 
   updatePlayer(dt) {
@@ -460,12 +474,14 @@ class ObstacleDodgeGame {
 
   getDownSpeed() {
     const progress = this.getDifficultyProgress();
-    return 138 + progress * 142 + Math.random() * (12 + progress * 28);
+    const tierMultiplier = 1 + this.getEndlessTier() * 0.1;
+    return (138 + progress * 142 + Math.random() * (12 + progress * 28)) * tierMultiplier;
   }
 
   getSideSpeed() {
     const progress = this.getDifficultyProgress();
-    return 180 + progress * 170 + Math.random() * (15 + progress * 30);
+    const tierMultiplier = 1 + this.getEndlessTier() * 0.1;
+    return (180 + progress * 170 + Math.random() * (15 + progress * 30)) * tierMultiplier;
   }
 
   pickSpeedBand(bands, offset = 0) {
@@ -609,7 +625,7 @@ class ObstacleDodgeGame {
       .filter((lane) => !occupiedLanes.has(lane));
     const lane = available[Math.floor(Math.random() * available.length)] ?? 0;
     const progress = this.getDifficultyProgress();
-    const warningDuration = 1.35 - progress * 0.45;
+    const warningDuration = Math.max(0.62, 1.35 - progress * 0.45 - this.getEndlessTier() * 0.07);
     this.lasers.push({
       orientation,
       lane,

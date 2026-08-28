@@ -108,6 +108,18 @@ assert.strictEqual(timingGame.shouldJudgeObstacle(timingPlayer, timingObstacle),
 timingPlayer.height = 55;
 assert.strictEqual(timingGame.isSuccessfulJump(timingPlayer, timingObstacle), true, 'a clearly airborne player should pass the revised judgment');
 
+const timeDifficultyGame = makeHarness();
+const openingSpeed = timeDifficultyGame.makeObstacle('cone', 1, 0, 1).speed;
+const openingWarning = timeDifficultyGame.getWarningDuration();
+const openingRest = timeDifficultyGame.getWaveRestDelay();
+timeDifficultyGame.elapsed = 60;
+assert.strictEqual(timeDifficultyGame.getTimeDifficultyTier(), 2, 'timing jump must gain a difficulty tier every 30 seconds');
+assert(timeDifficultyGame.makeObstacle('cone', 1, 0, 2).speed > openingSpeed, 'timing obstacles must speed up over time');
+assert(timeDifficultyGame.getWarningDuration() < openingWarning, 'timing warnings must shorten over time');
+assert(timeDifficultyGame.getWaveRestDelay() < openingRest, 'the rest between timing waves must shorten over time');
+timeDifficultyGame.elapsed = 150;
+assert.strictEqual(timeDifficultyGame.getTimeDifficultyTier(), 5, 'timing-jump time difficulty must keep rising into a late-game cap');
+
 const warningGame = makeHarness();
 warningGame.warning = { plan: { count: 1, directions: [1], label: '왼쪽 1개', type: 'cone' }, elapsed: 0, duration: 1.25 };
 let spawned = 0;

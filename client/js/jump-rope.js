@@ -259,8 +259,13 @@ class TeamJumpRopeGame {
 
   getRopeSpeed() {
     const progress = Math.min(1, this.roundCount / 35);
-    const rotationsPerSecond = (0.44 + progress * 0.18) * this.tempoFactor;
+    const timeMultiplier = 1 + this.getTimeDifficultyTier() * 0.07;
+    const rotationsPerSecond = (0.44 + progress * 0.18) * timeMultiplier * this.tempoFactor;
     return Math.PI * 2 * rotationsPerSecond;
+  }
+
+  getTimeDifficultyTier() {
+    return Math.min(4, Math.floor(this.elapsed / 30));
   }
 
   getRopeOffsets() {
@@ -419,10 +424,10 @@ class TeamJumpRopeGame {
         this.doubleRopeMode = true;
         this.modeLabel = '두 줄 · 전원 점프';
       } else if (this.currentMode === 'slow') {
-        this.tempoFactor = 0.68;
+        this.tempoFactor = 0.68 + this.getTimeDifficultyTier() * 0.035;
         this.modeLabel = '느린 템포 · 전원 점프';
       } else if (this.currentMode === 'fast') {
-        this.tempoFactor = 1.45;
+        this.tempoFactor = 1.45 + this.getTimeDifficultyTier() * 0.04;
         this.modeLabel = '빠른 템포 · 전원 점프';
       }
     }

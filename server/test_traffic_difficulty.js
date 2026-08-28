@@ -55,6 +55,10 @@ assert.deepStrictEqual(
   [3, 2],
   '700-point waves must alternate between three and two obstacles'
 );
+game.score = 1000;
+assert.strictEqual(game.getWaveSize('down'), 3, '1,000-point waves must always contain three obstacles');
+game.score = 2000;
+assert.strictEqual(game.getWaveSize('down'), 4, '2,000-point waves must contain four obstacles');
 
 game.score = 499;
 assert.strictEqual(game.getLaserWaveSize(), 1, 'Lasers must remain single before 500 points');
@@ -67,6 +71,10 @@ assert.deepStrictEqual(
   ['horizontal', 'vertical'],
   'A laser pair must cover one horizontal and one vertical lane'
 );
+game.score = 1000;
+assert.strictEqual(game.getLaserWaveSize(), 3, 'Lasers must spawn in threes from 1,000 points');
+game.score = 2000;
+assert.strictEqual(game.getLaserWaveSize(), 4, 'Lasers must spawn in fours from 2,000 points');
 
 game.score = 0;
 const earlyDownSpeed = game.getDownSpeed();
@@ -78,6 +86,21 @@ assert.ok(game.getDownSpeed() > earlyDownSpeed, 'Falling obstacles must speed up
 assert.ok(game.getSideSpeed() > earlySideSpeed, 'Side obstacles must speed up with score');
 assert.ok(game.getDownSpawnDelay() < earlyDownDelay, 'Falling obstacles must spawn more often with score');
 assert.ok(game.getSideSpawnDelay() < earlySideDelay, 'Side obstacles must spawn more often with score');
+const score800DownSpeed = game.getDownSpeed();
+const score800DownDelay = game.getDownSpawnDelay();
+const score800LaserDelay = game.getLaserSpawnDelay();
+game.score = 1000;
+assert.strictEqual(game.getEndlessTier(), 1, 'The endless difficulty tier must begin at 1,000 points');
+assert.ok(game.getDownSpeed() > score800DownSpeed, '1,000 points must add another falling-obstacle speed step');
+assert.ok(game.getDownSpawnDelay() < score800DownDelay, '1,000 points must shorten falling-obstacle spacing again');
+assert.ok(game.getLaserSpawnDelay() < score800LaserDelay, '1,000 points must make lasers appear more often');
+game.score = 2000;
+assert.strictEqual(game.getEndlessTier(), 2, 'The endless difficulty tier must rise again at 2,000 points');
+game.score = 0;
+game.elapsed = 60;
+assert.strictEqual(game.getEndlessTier(), 1, 'Surviving 60 seconds must raise difficulty even without bonus score');
+game.elapsed = 120;
+assert.strictEqual(game.getEndlessTier(), 2, 'Survival difficulty must continue rising every minute');
 
 const starSpeed = game.pickStarSpeed();
 const heartSpeed = game.pickHeartSpeed();

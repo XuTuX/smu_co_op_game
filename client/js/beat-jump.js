@@ -210,12 +210,27 @@ class BeatJumpGame {
   }
 
   chooseObstacleType() {
+    if (this.getTimeDifficultyTier() >= 3 && this.waveNumber % 2 === 0) return 'cart';
     if (this.waveNumber >= 6 && this.waveNumber % 3 === 2) return 'cart';
     return this.waveNumber % 2 === 0 ? 'cone' : 'barrel';
   }
 
+  getTimeDifficultyTier() {
+    return Math.min(5, Math.floor(this.elapsed / 30));
+  }
+
+  getWarningDuration() {
+    return Math.max(0.75, 1.25 - this.getTimeDifficultyTier() * 0.08);
+  }
+
+  getWaveRestDelay() {
+    return Math.max(0.55, 1.35 - this.elapsed / 100 - this.getTimeDifficultyTier() * 0.08);
+  }
+
   chooseWavePlan() {
-    const count = this.waveNumber < 3 ? 1 : (this.waveNumber < 7 ? 2 : 3);
+    const waveCount = this.waveNumber < 3 ? 1 : (this.waveNumber < 7 ? 2 : 3);
+    const timeCount = this.elapsed >= 90 ? 3 : (this.elapsed >= 45 ? 2 : 1);
+    const count = Math.max(waveCount, timeCount);
     const firstDirection = this.nextDirection;
     this.nextDirection *= -1;
     let directions = Array(count).fill(firstDirection);
@@ -239,7 +254,7 @@ class BeatJumpGame {
 
   beginWarning() {
     const plan = this.chooseWavePlan();
-    this.warning = { plan, elapsed: 0, duration: 1.25 };
+    this.warning = { plan, elapsed: 0, duration: this.getWarningDuration() };
     this.showDirection(plan);
     this.soundEngine.playBeep(430, 0.12, 'square');
   }
@@ -265,7 +280,8 @@ class BeatJumpGame {
   makeObstacle(type, direction, offset, waveId) {
     const baseType = type === 'double' || type === 'triple' || type === 'pinch' ? 'cone' : type;
     const config = this.waveTypes[baseType];
-    const progressBoost = 1 + Math.min(0.3, this.elapsed / 200);
+    const progressBoost = (1 + Math.min(0.3, this.elapsed / 200))
+      * (1 + this.getTimeDifficultyTier() * 0.05);
     const startX = direction > 0 ? -130 - offset : 1730 + offset;
     return {
       type: baseType, direction, x: startX, y: this.groundY,
@@ -365,7 +381,7 @@ class BeatJumpGame {
     const perfect = this.wave.perfect && this.wave.successes === this.wave.expected && this.wave.expected > 0;
     if (perfect) this.soundEngine.playSuccess();
     this.wave = null;
-    this.nextWaveTimer = Math.max(0.7, 1.35 - this.elapsed / 100);
+    this.nextWaveTimer = this.getWaveRestDelay();
     this.passPulse = 1;
   }
 

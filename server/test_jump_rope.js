@@ -92,6 +92,12 @@ const speedGame = makeHarness();
 const startingSpeed = speedGame.getRopeSpeed();
 speedGame.roundCount = 35;
 assert(speedGame.getRopeSpeed() > startingSpeed, 'rope speed should increase during the round');
+const roundProgressSpeed = speedGame.getRopeSpeed();
+speedGame.elapsed = 30;
+assert.strictEqual(speedGame.getTimeDifficultyTier(), 1, 'jump rope must gain a time difficulty tier after 30 seconds');
+assert(speedGame.getRopeSpeed() > roundProgressSpeed, 'jump rope must keep speeding up as survival time passes');
+speedGame.elapsed = 120;
+assert.strictEqual(speedGame.getTimeDifficultyTier(), 4, 'jump-rope time difficulty must keep rising into a late-game cap');
 
 const geometryGame = makeHarness();
 geometryGame.ropeAngle = Math.PI / 2;
@@ -165,6 +171,10 @@ assert.strictEqual(tempoGame.tempoFactor, 0.68, 'random slow mode should lower r
 tempoGame.currentMode = 'fast';
 tempoGame.applyRoundMode(false);
 assert.strictEqual(tempoGame.tempoFactor, 1.45, 'random fast mode should raise rope speed');
+tempoGame.elapsed = 60;
+tempoGame.currentMode = 'fast';
+tempoGame.applyRoundMode(false);
+assert(tempoGame.tempoFactor > 1.45, 'late-game fast mode must become stronger with survival time');
 
 const sharedLifeGame = makeHarness();
 sharedLifeGame.commandTargets = null;
