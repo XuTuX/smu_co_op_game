@@ -14,80 +14,225 @@ class GameMap {
       { x: width - 10, y: height / 2, width: 20, height: height, type: 'wall' }      // Right
     ];
 
-    // Each stage is a distinct one-bay map rather than a shared parking lot.
-    this.stageLayouts = {
-      1: {
-        name: '연습 주차장',
-        code: 'TRAINING LOT',
-        theme: { ground: '#202731', grid: '#28313D', accent: '#EAB308', wall: '#3A4654' },
-        spawnPoint: { x: 600, y: 690, angle: -Math.PI / 2 },
-        parkingSpots: [
-          { id: 2, name: '연습장 정면 주차', x: 600, y: 145, angle: Math.PI / 2 },
-          { id: 6, name: '연습장 우측 주차', x: 1015, y: 405, angle: 0 }
-        ],
-        obstacles: [
-          { x: 360, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#3B82F6' },
-          { x: 840, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
-          { x: 360, y: 655, width: 44, height: 95, angle: 0, type: 'car', color: '#EC4899' },
-          { x: 840, y: 655, width: 44, height: 95, angle: 0, type: 'car', color: '#06B6D4' }
-        ]
-      },
-      2: {
-        name: '도심 공사 구역',
-        code: 'CITY WORKS',
-        theme: { ground: '#252A2E', grid: '#2D3439', accent: '#F59E0B', wall: '#444B50' },
-        spawnPoint: { x: 1010, y: 675, angle: Math.PI },
-        parkingSpots: [
-          { id: 1, name: '공사장 좌측 주차', x: 170, y: 145, angle: Math.PI / 2 },
-          { id: 3, name: '공사장 우측 주차', x: 1030, y: 405, angle: Math.PI / 2 }
-        ],
-        obstacles: [
-          { x: 860, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#F97316' },
-          { x: 960, y: 145, width: 44, height: 95, angle: 0, type: 'car', color: '#8B5CF6' },
-          { x: 455, y: 575, width: 210, height: 72, angle: 0, type: 'workzone' },
-          { x: 735, y: 345, width: 190, height: 72, angle: 0, type: 'workzone' }
-        ]
-      },
-      3: {
-        name: '야간 버스 터미널',
-        code: 'NIGHT TERMINAL',
-        theme: { ground: '#17272D', grid: '#20333A', accent: '#38BDF8', wall: '#344B53' },
-        spawnPoint: { x: 1020, y: 690, angle: Math.PI },
-        parkingSpots: [
-          { id: 4, name: '터미널 좌측 평행 주차', x: 205, y: 405, angle: 0 },
-          { id: 5, name: '터미널 우측 평행 주차', x: 985, y: 405, angle: Math.PI }
-        ],
-        obstacles: [
-          { x: 660, y: 175, width: 410, height: 72, angle: 0, type: 'platform', label: 'A' },
-          { x: 660, y: 600, width: 410, height: 72, angle: 0, type: 'platform', label: 'B' },
-          { x: 335, y: 155, width: 44, height: 95, angle: 0, type: 'car', color: '#60A5FA' },
-          { x: 1080, y: 185, width: 24, height: 150, angle: 0, type: 'barrier' }
-        ]
-      }
+    // Every round uses the same lot. Only obstacles and the active bay change,
+    // so a round advance feels like a quick screen transition rather than a
+    // completely different stage.
+    this.layout = {
+      name: '무한 주차장',
+      code: 'ENDLESS LOT',
+      theme: { ground: '#202731', grid: '#28313D', accent: '#EAB308', wall: '#3A4654' },
+      spawnPoint: { x: 600, y: 690, angle: -Math.PI / 2 },
+      parkingSpots: [
+        { id: 1, name: '중앙 정면 주차', x: 600, y: 135, angle: Math.PI / 2 },
+        { id: 2, name: '우측 평행 주차', x: 1040, y: 400, angle: 0 },
+        { id: 3, name: '좌측 정면 주차', x: 205, y: 135, angle: Math.PI / 2 },
+        { id: 4, name: '좌측 평행 주차', x: 155, y: 400, angle: 0 },
+        { id: 5, name: '우측 정면 주차', x: 995, y: 135, angle: Math.PI / 2 },
+        { id: 6, name: '하단 좌측 주차', x: 205, y: 665, angle: Math.PI / 2 }
+      ]
     };
 
-    this.setStage(1);
+    // Five large hazards leave a usable route while still making late rounds busy.
+    this.maxObstacles = 5;
+    this.obstacleSpawnPoints = [
+      { x: 360, y: 300 }, { x: 820, y: 300 },
+      { x: 360, y: 500 }, { x: 820, y: 500 },
+      { x: 600, y: 400, movingOnly: true }
+    ];
+    this.staticObstacleTemplates = [
+      { width: 138, height: 48, type: 'cone-row' },
+      { width: 165, height: 42, type: 'concrete-block' },
+      { width: 170, height: 62, type: 'workzone' },
+      { width: 104, height: 54, type: 'tire-stack' },
+      { width: 150, height: 50, type: 'barricade' }
+    ];
+    this.pickupSpawnPoints = [
+      { x: 400, y: 135 }, { x: 800, y: 135 },
+      { x: 400, y: 665 }, { x: 800, y: 665 },
+      { x: 280, y: 235 }, { x: 920, y: 235 },
+      { x: 280, y: 565 }, { x: 920, y: 565 }
+    ];
+    this.layoutSeed = Math.floor(Math.random() * 1000000);
+
+    this.setRound(1);
   }
 
-  setStage(level) {
-    const stage = Math.max(1, Math.min(Object.keys(this.stageLayouts).length, level));
-    const layout = this.stageLayouts[stage];
-    this.stage = stage;
+  getObstacleCountForRound(round) {
+    return Math.min(this.maxObstacles, Math.max(0, Math.floor(round) - 2));
+  }
+
+  getMovingObstacleCountForRound(round) {
+    const count = this.getObstacleCountForRound(round);
+    return count >= 3 ? 1 : 0;
+  }
+
+  setRound(round) {
+    const safeRound = Math.max(1, Math.floor(round));
+    const layout = this.layout;
+    this.round = safeRound;
+    this.stage = 1;
     this.stageName = layout.name;
     this.stageCode = layout.code;
     this.theme = { ...layout.theme };
     this.spawnPoint = { ...layout.spawnPoint };
-    this.obstacles = layout.obstacles.map((obstacle) => ({ ...obstacle }));
     this.parkingSpots = layout.parkingSpots.map((parkingSpot) => ({
       ...parkingSpot,
-      width: CONFIG.PARKING.WIDTH,
-      length: CONFIG.PARKING.LENGTH
+      width: CONFIG.PARKING_DIFFICULTY.spotWidth,
+      length: CONFIG.PARKING_DIFFICULTY.spotLength
     }));
+    this.layoutSeed = Math.floor(Math.random() * 1000000);
+    this.obstacles = [];
+    this.parkingPass = null;
+    this.advanceRound(safeRound, this.spawnPoint.x, this.spawnPoint.y);
     this.activeParkingSpotId = this.parkingSpots[0].id;
+  }
+
+  randomUnit(key, salt = 0) {
+    const value = Math.sin((this.layoutSeed + key * 9283 + salt * 2971) * 0.0174533) * 43758.5453;
+    return value - Math.floor(value);
+  }
+
+  getObstacleBounds(obstacle) {
+    const quarterTurn = Math.abs(Math.sin(obstacle.angle || 0)) > 0.7;
+    const halfWidth = (quarterTurn ? obstacle.height : obstacle.width) / 2;
+    const halfHeight = (quarterTurn ? obstacle.width : obstacle.height) / 2;
+    let minX = obstacle.x - halfWidth;
+    let maxX = obstacle.x + halfWidth;
+    let minY = obstacle.y - halfHeight;
+    let maxY = obstacle.y + halfHeight;
+    if (obstacle.motion?.axis === 'x') {
+      minX = obstacle.motion.min - halfWidth;
+      maxX = obstacle.motion.max + halfWidth;
+    } else if (obstacle.motion?.axis === 'y') {
+      minY = obstacle.motion.min - halfHeight;
+      maxY = obstacle.motion.max + halfHeight;
+    }
+    return { minX, maxX, minY, maxY };
+  }
+
+  boundsOverlap(a, b, gap = 0) {
+    return !(a.maxX + gap <= b.minX || b.maxX + gap <= a.minX
+      || a.maxY + gap <= b.minY || b.maxY + gap <= a.minY);
+  }
+
+  getParkingSpotBounds(spot) {
+    return this.getObstacleBounds({
+      x: spot.x,
+      y: spot.y,
+      width: spot.length,
+      height: spot.width,
+      angle: spot.angle,
+      motion: null
+    });
+  }
+
+  createObstacle(obstacleIndex, round, avoidX, avoidY) {
+    const isMoving = obstacleIndex === 2;
+    const isWall = obstacleIndex === 1 || obstacleIndex === 4;
+    let spec;
+    if (isMoving) {
+      spec = {
+        width: 94,
+        height: 58,
+        type: 'maintenance-cart',
+        color: '#2563EB'
+      };
+    } else if (isWall) {
+      spec = { width: 180, height: 36, type: 'wall-segment' };
+    } else {
+      const templateIndex = Math.floor(this.randomUnit(obstacleIndex, 3) * this.staticObstacleTemplates.length);
+      spec = { ...this.staticObstacleTemplates[templateIndex] };
+    }
+
+    const angle = 0;
+    const movingAxis = 'y';
+    const makeCandidate = (point) => {
+      const obstacle = { ...spec, x: point.x, y: point.y, angle, addedRound: round, motion: null };
+      if (isMoving) {
+        const center = point[movingAxis];
+        obstacle.motion = {
+          axis: movingAxis,
+          min: center - 95,
+          max: center + 95,
+          baseSpeed: obstacleIndex === 2 ? 72 : 86,
+          speed: obstacleIndex === 2 ? 72 : 86,
+          direction: this.randomUnit(obstacleIndex, 23) > 0.5 ? 1 : -1
+        };
+      }
+      return obstacle;
+    };
+
+    const eligiblePoints = this.obstacleSpawnPoints.filter((point) => isMoving ? point.movingOnly : !point.movingOnly);
+    const orderedPoints = eligiblePoints
+      .map((point, index) => ({ ...point, order: this.randomUnit(obstacleIndex + 1, index + 11) }))
+      .sort((a, b) => a.order - b.order);
+    const isClear = (point) => {
+      const candidateBounds = this.getObstacleBounds(makeCandidate(point));
+      if (avoidX !== undefined && avoidY !== undefined) {
+        const busBounds = { minX: avoidX - 78, maxX: avoidX + 78, minY: avoidY - 78, maxY: avoidY + 78 };
+        if (this.boundsOverlap(candidateBounds, busBounds, 45)) return false;
+      }
+      if (this.parkingSpots.some((spot) => this.boundsOverlap(candidateBounds, this.getParkingSpotBounds(spot), 24))) {
+        return false;
+      }
+      return this.obstacles.every((obstacle) => !this.boundsOverlap(candidateBounds, this.getObstacleBounds(obstacle), 42));
+    };
+    const point = orderedPoints.find(isClear);
+    return point ? makeCandidate(point) : null;
+  }
+
+  advanceRound(round, avoidX, avoidY) {
+    const safeRound = Math.max(1, Math.floor(round));
+    this.round = safeRound;
+    const desiredCount = this.getObstacleCountForRound(safeRound);
+    while (this.obstacles.length < desiredCount) {
+      const obstacle = this.createObstacle(this.obstacles.length, safeRound, avoidX, avoidY);
+      if (!obstacle) break;
+      this.obstacles.push(obstacle);
+    }
+    const speedScale = 1 + Math.min(0.75, Math.max(0, safeRound - 5) * 0.025);
+    for (const obstacle of this.obstacles) {
+      if (obstacle.motion) obstacle.motion.speed = obstacle.motion.baseSpeed * speedScale;
+    }
+  }
+
+  // Kept as a compatibility alias for diagnostics that initialize a map stage.
+  setStage(level) {
+    this.setRound(level);
   }
 
   setActiveParkingSpot(spot) {
     if (spot) this.activeParkingSpotId = spot.id;
+  }
+
+  spawnParkingPass(round, busX, busY, targetSpot) {
+    const orderedPoints = this.pickupSpawnPoints
+      .map((point, index) => ({ ...point, order: this.randomUnit(round, index + 47) }))
+      .sort((a, b) => a.order - b.order);
+    const point = orderedPoints.find((candidate) => {
+      if (Math.hypot(candidate.x - busX, candidate.y - busY) < 155) return false;
+      if (targetSpot && Math.hypot(candidate.x - targetSpot.x, candidate.y - targetSpot.y) < 150) return false;
+      const pickupBounds = {
+        minX: candidate.x - 25,
+        maxX: candidate.x + 25,
+        minY: candidate.y - 25,
+        maxY: candidate.y + 25
+      };
+      return this.obstacles.every((obstacle) => !this.boundsOverlap(pickupBounds, this.getObstacleBounds(obstacle), 28));
+    });
+    this.parkingPass = point ? { x: point.x, y: point.y, radius: 24, pulse: 0 } : null;
+    return this.parkingPass;
+  }
+
+  clearParkingPass() {
+    this.parkingPass = null;
+  }
+
+  collectParkingPass(bus) {
+    if (!this.parkingPass) return false;
+    if (Math.hypot(bus.x - this.parkingPass.x, bus.y - this.parkingPass.y) > 62) return false;
+    this.parkingPass = null;
+    return true;
   }
 
   // Get a random new parking target that differs from current and isn't right on top of bus
@@ -106,28 +251,36 @@ class GameMap {
     return candidates[randomIndex];
   }
 
+  getSpotForRound(round, currentSpotId, busX, busY) {
+    const isUsable = (spot) => spot.id !== currentSpotId
+      && (busX === undefined || busY === undefined || Math.hypot(spot.x - busX, spot.y - busY) >= 260);
+    const candidates = this.parkingSpots.filter(isUsable);
+    const fallback = this.parkingSpots.find((spot) => spot.id !== currentSpotId) || this.parkingSpots[0];
+    const randomIndex = candidates.length
+      ? Math.floor(this.randomUnit(Math.max(1, round), 31) * candidates.length)
+      : 0;
+    const spot = candidates[randomIndex] || fallback;
+    return { ...spot };
+  }
+
   getSpotForLevel(level, currentSpotId, busX, busY) {
-    const difficulty = CONFIG.DIFFICULTY[Math.max(0, Math.min(CONFIG.DIFFICULTY.length - 1, level - 1))];
-    let candidates = this.parkingSpots.filter((spot) => {
-      if (!difficulty.spotIds.includes(spot.id)) return false;
-      if (currentSpotId && spot.id === currentSpotId) return false;
-      if (busX !== undefined && busY !== undefined) {
-        return Math.hypot(spot.x - busX, spot.y - busY) >= 140;
+    return this.getSpotForRound(level, currentSpotId, busX, busY);
+  }
+
+  update(deltaTime) {
+    if (this.parkingPass) this.parkingPass.pulse += deltaTime;
+    for (const obstacle of this.obstacles) {
+      if (!obstacle.motion) continue;
+      const motion = obstacle.motion;
+      obstacle[motion.axis] += motion.speed * motion.direction * deltaTime;
+      if (obstacle[motion.axis] >= motion.max) {
+        obstacle[motion.axis] = motion.max;
+        motion.direction = -1;
+      } else if (obstacle[motion.axis] <= motion.min) {
+        obstacle[motion.axis] = motion.min;
+        motion.direction = 1;
       }
-      return true;
-    });
-
-    if (candidates.length === 0) {
-      candidates = this.parkingSpots.filter((spot) => difficulty.spotIds.includes(spot.id));
     }
-
-    const spot = candidates[0];
-    return {
-      ...spot,
-      width: difficulty.spotWidth,
-      length: difficulty.spotLength,
-      difficultyLevel: difficulty.level
-    };
   }
 
   draw(ctx) {
@@ -152,7 +305,6 @@ class GameMap {
     }
 
     this.drawEnvironment(ctx);
-    this.drawStageStamp(ctx);
 
     // 2. Road Lanes & Driving Area Markers
     this.drawRoadMarkings(ctx);
@@ -163,8 +315,40 @@ class GameMap {
     // 4. Draw Obstacles (Parked cars, barriers, trees)
     this.drawObstacles(ctx);
 
-    // 5. Draw Curbs & Boundary Walls
+    // 5. Draw the parking permit pickup used from round five.
+    this.drawParkingPass(ctx);
+
+    // 6. Draw Curbs & Boundary Walls
     this.drawBoundaryWalls(ctx);
+  }
+
+  drawParkingPass(ctx) {
+    if (!this.parkingPass) return;
+    const pass = this.parkingPass;
+    const pulse = 0.5 + Math.sin(pass.pulse * 5) * 0.5;
+    ctx.save();
+    ctx.translate(pass.x, pass.y);
+    ctx.fillStyle = `rgba(250, 204, 21, ${0.12 + pulse * 0.12})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 34 + pulse * 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.rotate(-0.08);
+    ctx.fillStyle = '#FDE047';
+    ctx.strokeStyle = '#172554';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(-25, -18, 50, 36, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#172554';
+    ctx.font = '900 23px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('P', 0, 1);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(-19, 11, 38, 3);
+    ctx.restore();
   }
 
   drawRoadMarkings(ctx) {
@@ -175,33 +359,18 @@ class GameMap {
     ctx.lineWidth = 2.5;
     ctx.setLineDash([18, 16]);
 
-    if (this.stage === 1) {
+    if (this.round < 3) {
       ctx.beginPath();
       ctx.moveTo(80, 275);
       ctx.lineTo(1120, 275);
       ctx.moveTo(80, 525);
       ctx.lineTo(1120, 525);
       ctx.stroke();
-    } else if (this.stage === 2) {
-      ctx.beginPath();
-      ctx.moveTo(1090, 675);
-      ctx.lineTo(830, 675);
-      ctx.bezierCurveTo(650, 675, 670, 450, 565, 450);
-      ctx.bezierCurveTo(430, 450, 500, 245, 340, 245);
-      ctx.lineTo(95, 245);
-      ctx.stroke();
     } else {
+      // From round three, a central aisle replaces the sparse practice guides.
       ctx.beginPath();
-      ctx.moveTo(1080, 700);
-      ctx.lineTo(930, 700);
-      ctx.quadraticCurveTo(870, 700, 870, 640);
-      ctx.lineTo(870, 505);
-      ctx.quadraticCurveTo(870, 455, 815, 455);
-      ctx.lineTo(100, 455);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(100, 330);
-      ctx.lineTo(940, 330);
+      ctx.moveTo(75, 400);
+      ctx.lineTo(1125, 400);
       ctx.stroke();
     }
 
@@ -214,44 +383,105 @@ class GameMap {
     ctx.strokeRect(40, 40, this.width - 80, this.height - 80);
 
     ctx.restore();
+
+    this.drawRoundCourseMarkings(ctx);
   }
 
-  drawStageStamp(ctx) {
+  drawRoundCourseMarkings(ctx) {
+    if (this.round < 3) return;
+
     ctx.save();
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
-    ctx.font = '800 18px ui-monospace, monospace';
+
+    // Only broken paint guides are used here. Solid-looking structures are
+    // reserved for real collision obstacles and boundary walls.
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.62)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([14, 10]);
+    ctx.beginPath();
+    ctx.moveTo(530, 565);
+    ctx.lineTo(530, 735);
+    ctx.moveTo(670, 565);
+    ctx.lineTo(670, 735);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.76)';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(542, 590);
+    ctx.lineTo(658, 590);
+    ctx.stroke();
+    this.drawCourseArrow(ctx, 250, 400, 0);
+    this.drawCourseArrow(ctx, 950, 400, Math.PI);
+    this.drawCourseArrow(ctx, 600, 665, -Math.PI / 2);
+
+    if (this.round >= 5) {
+      // Moving carts get a visible travel rail so their crossing can be read.
+      for (const obstacle of this.obstacles.filter((item) => item.motion)) {
+        const motion = obstacle.motion;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.58)';
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.055)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([12, 8]);
+        ctx.beginPath();
+        if (motion.axis === 'x') {
+          ctx.roundRect(motion.min - obstacle.width / 2 - 10, obstacle.y - obstacle.height / 2 - 10,
+            motion.max - motion.min + obstacle.width + 20, obstacle.height + 20, 12);
+        } else {
+          ctx.roundRect(obstacle.x - obstacle.width / 2 - 10, motion.min - obstacle.height / 2 - 10,
+            obstacle.width + 20, motion.max - motion.min + obstacle.height + 20, 12);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  drawCourseArrow(ctx, x, y, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.beginPath();
+    ctx.moveTo(42, 0);
+    ctx.lineTo(12, -19);
+    ctx.lineTo(12, -7);
+    ctx.lineTo(-38, -7);
+    ctx.lineTo(-38, 7);
+    ctx.lineTo(12, 7);
+    ctx.lineTo(12, 19);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 
   drawEnvironment(ctx) {
     ctx.save();
-    if (this.stage === 1) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.018)';
-      ctx.fillRect(45, 70, this.width - 90, 145);
-      ctx.fillRect(45, 585, this.width - 90, 145);
-    } else if (this.stage === 2) {
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.035)';
-      ctx.fillRect(45, 85, this.width - 90, 115);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
-      ctx.fillRect(45, 625, this.width - 90, 105);
-    } else {
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.028)';
-      ctx.fillRect(45, 285, this.width - 90, 215);
-      ctx.strokeStyle = 'rgba(125, 211, 252, 0.14)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(45, 285);
-      ctx.lineTo(this.width - 45, 285);
-      ctx.moveTo(45, 500);
-      ctx.lineTo(this.width - 45, 500);
-      ctx.stroke();
+    // Three asphalt tones create zones without adding fake collision lines.
+    ctx.fillStyle = 'rgba(7, 12, 18, 0.16)';
+    ctx.fillRect(35, 55, this.width - 70, 175);
+    ctx.fillRect(35, 575, this.width - 70, 170);
+    ctx.fillStyle = 'rgba(71, 85, 105, 0.075)';
+    ctx.fillRect(35, 245, this.width - 70, 310);
+
+    // Small deterministic asphalt flecks soften the empty digital grid.
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.055)';
+    for (let i = 0; i < 72; i++) {
+      const x = 45 + ((i * 167 + 53) % (this.width - 90));
+      const y = 45 + ((i * 97 + 29) % (this.height - 90));
+      const size = 1 + (i % 3);
+      ctx.fillRect(x, y, size, size);
     }
     ctx.restore();
   }
 
   drawParkingBays(ctx) {
-    // Only the current objective is visible; the second bay appears on clear.
+    // Only the current objective is painted; unused bays do not look like
+    // walls or alternate goals.
     this.parkingSpots
       .filter((spot) => spot.id === this.activeParkingSpotId)
       .forEach(spot => {
@@ -262,9 +492,8 @@ class GameMap {
       const halfL = spot.length / 2;
       const halfW = spot.width / 2;
 
-      // Draw U-shaped stall outline
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.62)';
+      ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(-halfL, -halfW);
       ctx.lineTo(halfL, -halfW);
@@ -285,7 +514,241 @@ class GameMap {
       const halfW = obs.width / 2;
       const halfH = obs.height / 2;
 
-      if (obs.type === 'car') {
+      // A striped footprint makes every spawned object read as a deliberate
+      // driving hazard before the bus reaches its collision box.
+      if (['cone-row', 'barricade', 'concrete-block', 'wall-segment', 'workzone', 'tire-stack', 'maintenance-cart'].includes(obs.type)) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.72)';
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 7]);
+        ctx.beginPath();
+        ctx.roundRect(-halfW - 8, -halfH - 8, obs.width + 16, obs.height + 16, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (obs.type === 'wall-segment') {
+        ctx.fillStyle = 'rgba(0, 0, 0, .42)';
+        ctx.beginPath();
+        ctx.roundRect(-halfW + 7, -halfH + 8, obs.width, obs.height, 7);
+        ctx.fill();
+
+        ctx.fillStyle = '#6B7280';
+        ctx.strokeStyle = '#CBD5E1';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(-halfW, -halfH, obs.width, obs.height, 7);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#374151';
+        ctx.fillRect(-halfW + 5, -halfH + 7, obs.width - 10, obs.height - 14);
+        ctx.fillStyle = '#FBBF24';
+        for (let x = -halfW + 12; x < halfW - 8; x += 34) {
+          ctx.fillRect(x, -halfH + 3, 18, 5);
+          ctx.fillRect(x, halfH - 8, 18, 5);
+        }
+        ctx.strokeStyle = '#94A3B8';
+        ctx.lineWidth = 2;
+        for (let x = -halfW + 45; x < halfW; x += 45) {
+          ctx.beginPath();
+          ctx.moveTo(x, -halfH + 8);
+          ctx.lineTo(x, halfH - 8);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#E5E7EB';
+        for (const boltX of [-halfW + 17, halfW - 17]) {
+          ctx.beginPath();
+          ctx.arc(boltX, 0, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+      } else if (obs.type === 'maintenance-cart') {
+        ctx.fillStyle = 'rgba(0, 0, 0, .36)';
+        ctx.beginPath();
+        ctx.ellipse(5, halfH - 2, halfW + 5, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rubber bumper and four wheels sit inside the collision rectangle.
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(-halfW, halfH - 13, obs.width, 10);
+        for (const wheelX of [-halfW + 16, halfW - 16]) {
+          ctx.fillStyle = '#030712';
+          ctx.beginPath();
+          ctx.arc(wheelX, halfH - 4, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#6B7280';
+          ctx.beginPath();
+          ctx.arc(wheelX, halfH - 4, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = obs.color || '#2563EB';
+        ctx.strokeStyle = '#172554';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(-halfW, -halfH + 9, obs.width, obs.height - 21, 9);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#BAE6FD';
+        ctx.strokeStyle = '#0C4A6E';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-halfW + 10, -halfH + 14, 28, 18, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#FEF3C7';
+        ctx.fillRect(halfW - 17, -halfH + 17, 9, 8);
+
+        // High-contrast chevrons and a roof beacon signal that this is moving.
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(-10, -halfH + 13, 34, 19);
+        ctx.fillStyle = '#FBBF24';
+        ctx.font = '900 17px ui-monospace, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obs.motion?.axis === 'x' ? '↔' : '↕', 7, -halfH + 23);
+        ctx.fillStyle = '#F97316';
+        ctx.beginPath();
+        ctx.arc(0, -halfH + 5, 7, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#FDBA74';
+        ctx.stroke();
+
+      } else if (obs.type === 'cone-row') {
+        ctx.fillStyle = 'rgba(0, 0, 0, .34)';
+        ctx.beginPath();
+        ctx.ellipse(4, halfH - 1, halfW + 3, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const coneCount = Math.max(3, Math.floor(obs.width / 34));
+        for (let i = 0; i < coneCount; i++) {
+          const coneX = -halfW + 18 + i * ((obs.width - 36) / Math.max(1, coneCount - 1));
+          ctx.fillStyle = '#111827';
+          ctx.beginPath();
+          ctx.roundRect(coneX - 14, halfH - 9, 28, 9, 3);
+          ctx.fill();
+          ctx.fillStyle = '#F97316';
+          ctx.strokeStyle = '#7C2D12';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(coneX, -halfH + 1);
+          ctx.lineTo(coneX - 11, halfH - 8);
+          ctx.lineTo(coneX + 11, halfH - 8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#FFF7ED';
+          ctx.fillRect(coneX - 7, 1, 14, 5);
+        }
+
+      } else if (obs.type === 'barricade') {
+        ctx.fillStyle = 'rgba(0, 0, 0, .32)';
+        ctx.fillRect(-halfW + 5, halfH - 7, obs.width, 10);
+
+        ctx.strokeStyle = '#D1D5DB';
+        ctx.lineWidth = 6;
+        for (const supportX of [-halfW + 22, halfW - 22]) {
+          ctx.beginPath();
+          ctx.moveTo(supportX, -halfH + 10);
+          ctx.lineTo(supportX - 15, halfH);
+          ctx.moveTo(supportX, -halfH + 10);
+          ctx.lineTo(supportX + 15, halfH);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#F97316';
+        ctx.strokeStyle = '#7C2D12';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-halfW, -12, obs.width, 24, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(-halfW + 2, -10, obs.width - 4, 20, 3);
+        ctx.clip();
+        ctx.strokeStyle = '#FFF7ED';
+        ctx.lineWidth = 9;
+        for (let x = -halfW - 20; x < halfW + 20; x += 34) {
+          ctx.beginPath();
+          ctx.moveTo(x, 15);
+          ctx.lineTo(x + 20, -15);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        for (const lampX of [-halfW + 24, halfW - 24]) {
+          ctx.fillStyle = '#111827';
+          ctx.beginPath();
+          ctx.arc(lampX, -halfH + 4, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#FBBF24';
+          ctx.beginPath();
+          ctx.arc(lampX, -halfH + 4, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+      } else if (obs.type === 'concrete-block') {
+        ctx.fillStyle = 'rgba(0, 0, 0, .34)';
+        ctx.fillRect(-halfW + 7, -halfH + 8, obs.width, obs.height);
+        ctx.fillStyle = '#9CA3AF';
+        ctx.strokeStyle = '#4B5563';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-halfW + 9, -halfH);
+        ctx.lineTo(halfW - 9, -halfH);
+        ctx.lineTo(halfW, halfH);
+        ctx.lineTo(-halfW, halfH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(-halfW + 5, -halfH + 6, obs.width - 10, 9);
+        ctx.fillStyle = '#FBBF24';
+        for (let x = -halfW + 7; x < halfW - 7; x += 28) {
+          ctx.beginPath();
+          ctx.moveTo(x, -halfH + 6);
+          ctx.lineTo(x + 12, -halfH + 6);
+          ctx.lineTo(x + 4, -halfH + 15);
+          ctx.lineTo(x - 8, -halfH + 15);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.strokeStyle = '#6B7280';
+        ctx.beginPath();
+        ctx.moveTo(-18, -2);
+        ctx.lineTo(-7, 5);
+        ctx.lineTo(-13, 13);
+        ctx.stroke();
+
+      } else if (obs.type === 'tire-stack') {
+        ctx.fillStyle = 'rgba(0, 0, 0, .36)';
+        ctx.beginPath();
+        ctx.ellipse(5, 8, halfW + 4, halfH - 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const tires = [
+          [-halfW + 23, 3], [-halfW + 52, -7], [-halfW + 78, 4], [0, 11]
+        ];
+        for (const [tireX, tireY] of tires) {
+          ctx.fillStyle = '#111827';
+          ctx.strokeStyle = '#030712';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(tireX, tireY, 24, 18, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#4B5563';
+          ctx.beginPath();
+          ctx.ellipse(tireX, tireY, 10, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+      } else if (obs.type === 'car') {
         // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fillRect(-halfW + 4, -halfH + 4, obs.width, obs.height);
@@ -436,14 +899,26 @@ class GameMap {
   drawBoundaryWalls(ctx) {
     this.walls.forEach(w => {
       ctx.save();
-      // Outer Curb texture
+      ctx.fillStyle = 'rgba(0, 0, 0, .4)';
+      ctx.fillRect(w.x - w.width / 2 + 4, w.y - w.height / 2 + 5, w.width, w.height);
       ctx.fillStyle = this.theme.wall;
       ctx.fillRect(w.x - w.width / 2, w.y - w.height / 2, w.width, w.height);
 
-      // Yellow/Black caution pattern on border
-      ctx.strokeStyle = '#6B7280';
+      ctx.strokeStyle = '#94A3B8';
       ctx.lineWidth = 2;
       ctx.strokeRect(w.x - w.width / 2, w.y - w.height / 2, w.width, w.height);
+
+      // Repeating reflectors make the collision boundary read as a curb wall.
+      ctx.fillStyle = '#EAB308';
+      if (w.width > w.height) {
+        for (let x = w.x - w.width / 2 + 12; x < w.x + w.width / 2 - 8; x += 48) {
+          ctx.fillRect(x, w.y - 4, 22, 8);
+        }
+      } else {
+        for (let y = w.y - w.height / 2 + 12; y < w.y + w.height / 2 - 8; y += 48) {
+          ctx.fillRect(w.x - 4, y, 8, 22);
+        }
+      }
       ctx.restore();
     });
   }

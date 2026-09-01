@@ -6,12 +6,16 @@ const CONFIG = {
   CANVAS_HEIGHT: 800,
 
   GAME_DURATION: 60,
-  PARKING_STAGE_DURATION: 60,
+
+  PARKING_RUN: {
+    STARTING_LIVES: 3,
+    ATTEMPT_TIME_SEC: 40,
+    COLLISION_COOLDOWN_SEC: 1.25,
+    ROUND_TRANSITION_MS: 900
+  },
 
   SCORING: {
-    PARKING_SUCCESS: 100,
-    STAGE_TIME_MULTIPLIER: 3,
-    ALL_CLEAR_BONUS: 300
+    PARKING_SUCCESS: 100
   },
 
   BUS: {
@@ -41,44 +45,17 @@ const CONFIG = {
     CORNER_INSIDE_TOLERANCE: 12    // Padding margin for 4-corner containment
   },
 
-  DIFFICULTY: [
-    {
-      level: 1,
-      label: '연습',
-      description: '연습 주차장 · 목표 2자리',
-      spotIds: [2, 6],
-      spotWidth: 82,
-      spotLength: 172,
-      angleToleranceDeg: 30,
-      maxStopSpeed: 0.5,
-      dwellTimeSec: 0.45,
-      cornerTolerance: 20
-    },
-    {
-      level: 2,
-      label: '보통',
-      description: '도심 공사 구역 · 목표 2자리',
-      spotIds: [1, 3],
-      spotWidth: 66,
-      spotLength: 148,
-      angleToleranceDeg: 21,
-      maxStopSpeed: 0.35,
-      dwellTimeSec: 0.75,
-      cornerTolerance: 15
-    },
-    {
-      level: 3,
-      label: '도전',
-      description: '야간 터미널 · 평행 2자리',
-      spotIds: [4, 5],
-      spotWidth: 52,
-      spotLength: 130,
-      angleToleranceDeg: 13,
-      maxStopSpeed: 0.25,
-      dwellTimeSec: 1.05,
-      cornerTolerance: 10
-    }
-  ],
+  // Parking judgment stays consistent. Endless-round difficulty comes from
+  // the number and arrangement of physical obstacles, not tighter rules.
+  PARKING_DIFFICULTY: {
+    label: '무한 주차',
+    spotWidth: 72,
+    spotLength: 158,
+    angleToleranceDeg: 22,
+    maxStopSpeed: 0.38,
+    dwellTimeSec: 0.7,
+    cornerTolerance: 16
+  },
 
   PLAYERS: {
     forward: { name: 'Player 1 (전진)', key: 'W / ↑', color: '#10B981', label: 'FORWARD' },

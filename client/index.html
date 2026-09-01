@@ -40,9 +40,17 @@
           <span class="clean-stat-title">점수</span>
           <strong id="score-value">0</strong>
         </div>
-        <div class="stat-block stat-time">
-          <span class="clean-stat-title">시간</span>
-          <strong id="time-value">60</strong>
+        <div class="stat-block stat-round">
+          <span class="clean-stat-title">라운드</span>
+          <strong id="round-value">1</strong>
+        </div>
+        <div class="stat-block stat-lives">
+          <span class="clean-stat-title">목숨</span>
+          <strong id="lives-value" aria-label="목숨 3개">♥ 3</strong>
+        </div>
+        <div class="stat-block stat-attempt-time">
+          <span class="clean-stat-title">남은 시간</span>
+          <strong id="attempt-time-value">40</strong>
         </div>
       </section>
 
@@ -90,14 +98,16 @@
 
         <div id="stage-transition" class="overlay stage-transition hidden" aria-live="assertive">
           <div class="stage-transition-card">
-            <strong id="stage-transition-label">2단계</strong>
+            <span id="stage-transition-kicker">주차 완료</span>
+            <strong id="stage-transition-label">ROUND 2</strong>
+            <em id="stage-transition-name">다음 주차 시작</em>
           </div>
         </div>
 
         <div id="start-modal" class="overlay modal-overlay ready-check-modal">
           <div class="modal-card">
             <h2 class="modal-title">버스 주차</h2>
-            <p class="modal-subtitle">버튼을 눌러 준비하세요.</p>
+            <p class="modal-subtitle">버튼을 눌러 준비하세요. 목숨 3개, 주차 시도마다 40초가 주어집니다.</p>
 
             <div class="role-grid">
               <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>전진</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">준비</button></div>
@@ -116,6 +126,7 @@
             <div class="score-summary">
               <div class="summary-box"><span class="summary-label">점수</span><strong id="final-score">0</strong></div>
               <div class="summary-box"><span class="summary-label">주차</span><strong id="final-park-count">0</strong></div>
+              <div class="summary-box"><span class="summary-label">라운드</span><strong id="final-round">1</strong></div>
             </div>
             <button id="restart-btn" class="btn btn-primary btn-large game-restart" type="button">다시하기</button>
           </div>

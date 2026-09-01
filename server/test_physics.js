@@ -66,13 +66,13 @@ assert.strictEqual(
   'The trajectory guide should stay anchored to the map while the bus moves'
 );
 
-for (let stage = 1; stage <= CONFIG.DIFFICULTY.length; stage++) {
-  map.setStage(stage);
+for (const round of [1, 3, 10, 18, 22]) {
+  map.setRound(round);
   const stageBus = new Bus(map.spawnPoint.x, map.spawnPoint.y, map.spawnPoint.angle);
   assert.strictEqual(
     CollisionSystem.checkBusCollisions(stageBus, map),
     false,
-    `Stage ${stage} spawn must be clear of walls and obstacles`
+    `Round ${round} spawn must be clear of walls and obstacles`
   );
 }
 

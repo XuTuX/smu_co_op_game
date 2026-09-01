@@ -6,6 +6,7 @@ class ParkingJudge {
     this.currentSpot = null;
     this.dwellTimer = 0;
     this.isSuccessful = false;
+    this.isLocked = false;
     this.pulseTime = 0;
     this.rules = {
       angleToleranceDeg: CONFIG.PARKING.ANGLE_TOLERANCE_DEG,
@@ -29,6 +30,14 @@ class ParkingJudge {
     this.dwellTimer = 0;
     this.isSuccessful = false;
     this.status.progress = 0;
+  }
+
+  setLocked(isLocked) {
+    this.isLocked = Boolean(isLocked);
+    if (this.isLocked) {
+      this.dwellTimer = 0;
+      this.status.progress = 0;
+    }
   }
 
   setDifficulty(difficulty) {
@@ -84,7 +93,7 @@ class ParkingJudge {
   }
 
   update(bus, deltaTime, onSuccess) {
-    if (!this.currentSpot || this.isSuccessful) return;
+    if (!this.currentSpot || this.isSuccessful || this.isLocked) return;
 
     this.pulseTime += deltaTime;
 
@@ -152,7 +161,11 @@ class ParkingJudge {
     const pulse = 0.5 + 0.5 * Math.sin(this.pulseTime * 4);
     const glowAlpha = 0.2 + 0.2 * pulse;
 
-    if (this.status.progress > 0) {
+    if (this.isLocked) {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 4;
+    } else if (this.status.progress > 0) {
       // Highlighting in active parking mode (Emerald Green)
       ctx.fillStyle = `rgba(16, 185, 129, ${0.3 + 0.3 * this.status.progress})`;
       ctx.strokeStyle = '#10B981';
@@ -191,6 +204,19 @@ class ParkingJudge {
     ctx.textBaseline = 'middle';
     ctx.fillText('P', 0, 1);
     ctx.restore();
+
+    if (this.isLocked) {
+      ctx.save();
+      ctx.fillStyle = '#FBBF24';
+      ctx.strokeStyle = '#172554';
+      ctx.lineWidth = 4;
+      ctx.font = '900 20px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeText('주차권 필요', spot.x, spot.y + 55);
+      ctx.fillText('주차권 필요', spot.x, spot.y + 55);
+      ctx.restore();
+    }
 
     ctx.restore();
 

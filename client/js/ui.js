@@ -4,7 +4,9 @@
 class UIController {
   constructor() {
     this.scoreElement = document.getElementById('score-value');
-    this.timeElement = document.getElementById('time-value');
+    this.roundElement = document.getElementById('round-value');
+    this.livesElement = document.getElementById('lives-value');
+    this.attemptTimeElement = document.getElementById('attempt-time-value');
     this.esp32Badge = document.getElementById('esp32-badge');
     this.esp32StatusText = document.getElementById('esp32-status-text');
     this.difficultyBadge = document.getElementById('difficulty-badge');
@@ -33,6 +35,7 @@ class UIController {
     this.stageTransitionName = document.getElementById('stage-transition-name');
     this.finalScoreElement = document.getElementById('final-score');
     this.finalParkCountElement = document.getElementById('final-park-count');
+    this.finalRoundElement = document.getElementById('final-round');
     this.finalResultBadge = document.getElementById('final-result-badge');
     this.finalResultTitle = document.getElementById('final-result-title');
 
@@ -70,15 +73,22 @@ class UIController {
     }
   }
 
-  updateTime(secondsRemaining) {
-    if (this.timeElement) {
-      this.timeElement.textContent = Math.max(0, Math.ceil(secondsRemaining));
-      if (secondsRemaining <= 10) {
-        this.timeElement.classList.add('urgent');
-      } else {
-        this.timeElement.classList.remove('urgent');
-      }
-    }
+  updateRound(round) {
+    if (this.roundElement) this.roundElement.textContent = round;
+  }
+
+  updateLives(lives) {
+    if (!this.livesElement) return;
+    const safeLives = Math.max(0, lives);
+    this.livesElement.textContent = `♥ ${safeLives}`;
+    this.livesElement.setAttribute('aria-label', `목숨 ${safeLives}개`);
+  }
+
+  updateAttemptTime(seconds) {
+    if (!this.attemptTimeElement) return;
+    const safeSeconds = Math.max(0, Math.ceil(seconds));
+    this.attemptTimeElement.textContent = safeSeconds;
+    this.attemptTimeElement.classList.toggle('urgent', safeSeconds <= 10);
   }
 
   updateSteering(steeringAngle, maxSteeringAngle) {
@@ -138,12 +148,16 @@ class UIController {
     this.countdownOverlay.classList.add('hidden');
   }
 
-  showStageTransition(scoreAdded, difficulty) {
+  showRoundTransition(round, obstaclesAdded = 0, movingObstacleAdded = false, scoreAdded = 0, requiresPass = false) {
     if (!this.stageTransition) return;
-    this.stageTransition.className = `overlay stage-transition stage-${difficulty.level}`;
-    if (this.stageTransitionKicker) this.stageTransitionKicker.textContent = '';
-    if (this.stageTransitionLabel) this.stageTransitionLabel.textContent = `${difficulty.level}단계`;
-    if (this.stageTransitionName) this.stageTransitionName.textContent = '';
+    this.stageTransition.className = 'overlay stage-transition';
+    if (this.stageTransitionKicker) this.stageTransitionKicker.textContent = `주차 완료 · +${scoreAdded}점`;
+    if (this.stageTransitionLabel) this.stageTransitionLabel.textContent = `ROUND ${round}`;
+    if (this.stageTransitionName) {
+      this.stageTransitionName.textContent = requiresPass
+        ? '주차권 획득 후 주차'
+        : (movingObstacleAdded ? '움직이는 장애물 등장' : (obstaclesAdded > 0 ? '장애물 +1' : '다음 주차 시작'));
+    }
   }
 
   hideStageTransition() {
@@ -164,10 +178,47 @@ class UIController {
     }, 1800);
   }
 
-  showGameOver(score, parkCount) {
+  showDamageBanner(lives) {
+    if (!this.successBanner) return;
+    this.successBanner.textContent = `충돌! 목숨 ${lives}개`;
+    this.successBanner.classList.add('damage-banner', 'banner-pop');
+    this.successBanner.classList.remove('hidden');
+    window.clearTimeout(this.bannerHideTimer);
+    this.bannerHideTimer = window.setTimeout(() => {
+      this.successBanner.classList.add('hidden');
+      this.successBanner.classList.remove('damage-banner', 'banner-pop');
+    }, 1100);
+  }
+
+  showTimeoutBanner(lives) {
+    if (!this.successBanner) return;
+    this.successBanner.textContent = `시간 초과! 목숨 ${lives}개 · 40초 재도전`;
+    this.successBanner.classList.add('damage-banner', 'banner-pop');
+    this.successBanner.classList.remove('hidden');
+    window.clearTimeout(this.bannerHideTimer);
+    this.bannerHideTimer = window.setTimeout(() => {
+      this.successBanner.classList.add('hidden');
+      this.successBanner.classList.remove('damage-banner', 'banner-pop');
+    }, 1500);
+  }
+
+  showPassBanner() {
+    if (!this.successBanner) return;
+    this.successBanner.textContent = '주차권 획득! 이제 주차하세요';
+    this.successBanner.classList.remove('damage-banner', 'hidden');
+    this.successBanner.classList.add('banner-pop');
+    window.clearTimeout(this.bannerHideTimer);
+    this.bannerHideTimer = window.setTimeout(() => {
+      this.successBanner.classList.add('hidden');
+      this.successBanner.classList.remove('banner-pop');
+    }, 1400);
+  }
+
+  showGameOver(score, parkCount, round = 1) {
     if (this.finalResultTitle) this.finalResultTitle.textContent = '게임 종료';
     if (this.finalScoreElement) this.finalScoreElement.textContent = score;
     if (this.finalParkCountElement) this.finalParkCountElement.textContent = parkCount;
+    if (this.finalRoundElement) this.finalRoundElement.textContent = round;
     this.gameOverModal.classList.remove('hidden');
   }
 
