@@ -238,6 +238,30 @@ void redirectToHome() {
   httpServer.send(302, "text/plain", "");
 }
 
+// Return the responses expected by each operating system's connectivity check.
+// Redirecting these URLs to the game makes the OS mistake this AP for a captive
+// portal and repeatedly open its Wi-Fi sign-in window while the game is running.
+void sendNoContent() {
+  httpServer.send(204, "text/plain", "");
+}
+
+void sendAppleSuccess() {
+  httpServer.send(200, "text/html; charset=utf-8",
+    "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+}
+
+void sendWindowsConnectTest() {
+  httpServer.send(200, "text/plain", "Microsoft Connect Test");
+}
+
+void sendWindowsNcsi() {
+  httpServer.send(200, "text/plain", "Microsoft NCSI");
+}
+
+void sendFirefoxSuccess() {
+  httpServer.send(200, "text/plain", "success\n");
+}
+
 void startHttpServer() {
   fileSystemReady = LittleFS.begin(false);
   if (fileSystemReady) {
@@ -261,10 +285,14 @@ void startHttpServer() {
     httpServer.send(200, "application/json", json);
   });
 
-  httpServer.on("/generate_204", HTTP_ANY, redirectToHome);
-  httpServer.on("/hotspot-detect.html", HTTP_ANY, redirectToHome);
-  httpServer.on("/connecttest.txt", HTTP_ANY, redirectToHome);
-  httpServer.on("/ncsi.txt", HTTP_ANY, redirectToHome);
+  // Satisfy common connectivity checks without triggering a captive-portal UI.
+  httpServer.on("/generate_204", HTTP_ANY, sendNoContent);
+  httpServer.on("/gen_204", HTTP_ANY, sendNoContent);
+  httpServer.on("/hotspot-detect.html", HTTP_ANY, sendAppleSuccess);
+  httpServer.on("/library/test/success.html", HTTP_ANY, sendAppleSuccess);
+  httpServer.on("/connecttest.txt", HTTP_ANY, sendWindowsConnectTest);
+  httpServer.on("/ncsi.txt", HTTP_ANY, sendWindowsNcsi);
+  httpServer.on("/canonical.html", HTTP_ANY, sendFirefoxSuccess);
 
   httpServer.onNotFound([]() {
     if (serveFile(httpServer.uri())) return;
