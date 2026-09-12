@@ -477,7 +477,7 @@ class Game {
       this.bus.update(inputs, dt);
       // 핸들이 실제로 움직였는지 추적해 조향음을 켠다 (버스가 멈춰 있어도 동작).
       const steeringMoved = Math.abs(this.bus.steeringAngle - steeringBefore) > 0.0005;
-      this.steeringSoundHold = steeringMoved ? 0.14 : Math.max(0, this.steeringSoundHold - dt);
+      this.steeringSoundHold = steeringMoved ? 0.2 : Math.max(0, this.steeringSoundHold - dt);
 
       // Moving maintenance vehicles start appearing from round five.
       this.map.update(dt);
