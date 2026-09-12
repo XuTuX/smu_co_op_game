@@ -19,7 +19,7 @@ const judge = new ParkingJudge();
 const rules = CONFIG.PARKING_DIFFICULTY;
 
 assert.strictEqual(CONFIG.PARKING_RUN.STARTING_LIVES, 3, 'Parking must start with three lives');
-assert.strictEqual(CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC, 40, 'Each parking attempt must last 40 seconds');
+assert.strictEqual(CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC, 35, 'Each parking attempt must last 35 seconds');
 assert.strictEqual(CONFIG.SCORING.PARKING_SUCCESS, 100);
 assert.strictEqual(CONFIG.PARKING_STAGE_DURATION, undefined, 'Endless parking must not have a stage timer');
 
@@ -112,7 +112,7 @@ assert(!gameSource.includes('timeRemaining'), 'Parking game loop must not count 
 assert(gameSource.includes('this.lives--'), 'A collision must remove a life');
 assert(gameSource.includes('const nextRound = this.round + 1'), 'Parking success must always advance another round');
 assert(gameSource.includes('CONFIG.SCORING.PARKING_SUCCESS + timeBonus'), 'Parking score must be 100 plus remaining time');
-assert(gameSource.includes('handleAttemptTimeout'), 'A 40-second timeout must consume a life and retry');
+assert(gameSource.includes('handleAttemptTimeout'), 'A 35-second timeout must retry and consume a life after the tutorial');
 assert(gameSource.includes('this.round < 5'), 'Parking-pass requirement must begin at round five');
 const successSource = gameSource.slice(gameSource.indexOf('handleParkingSuccess'), gameSource.indexOf('handleCollision'));
 assert(successSource.includes('this.map.advanceRound'), 'Round clears must add to the existing lot');

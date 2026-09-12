@@ -28,8 +28,6 @@
       <a class="mode-link" href="index.html"><span>01</span> 버스 주차</a>
       <a class="mode-link" href="traffic.html"><span>02</span> 장애물 피하기</a>
       <a class="mode-link active rope-active" href="jump-rope.html"><span>03</span> 단체 줄넘기</a>
-      <a class="mode-link" href="beat-jump.html"><span>04</span> 타이밍 점프</a>
-      <a class="mode-link" href="button-test.html"><span>05</span> 버튼 4개 연습</a>
     </nav>
 
     <main class="game-card rope-card">
@@ -64,10 +62,10 @@
             <h2 class="modal-title">단체 줄넘기</h2>
             <p class="modal-subtitle">버튼을 눌러 준비하세요.</p>
             <div class="role-grid">
-              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><kbd>W / ↑</kbd><button class="ready-tap" type="button" data-action="forward">준비</button></div>
-              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><kbd>S / ↓</kbd><button class="ready-tap" type="button" data-action="backward">준비</button></div>
-              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>점프</strong><kbd>A / ←</kbd><button class="ready-tap" type="button" data-action="left">준비</button></div>
-              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>점프</strong><kbd>D / →</kbd><button class="ready-tap" type="button" data-action="right">준비</button></div>
+              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><button class="ready-tap" type="button" data-action="forward">준비</button></div>
+              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><button class="ready-tap" type="button" data-action="backward">준비</button></div>
+              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>점프</strong><button class="ready-tap" type="button" data-action="left">준비</button></div>
+              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>점프</strong><button class="ready-tap" type="button" data-action="right">준비</button></div>
             </div>
             <div id="rope-ready-progress" class="ready-progress rope-ready-progress" aria-live="polite">0 / 4</div>
           </div>
@@ -85,6 +83,7 @@
         </div>
       </section>
     </main>
+    <footer class="utility-footer"><a class="diagnostic-link" href="button-test.html">관리자 · 버튼 상태 점검</a></footer>
   </div>
 
   <script src="js/sound.js"></script>

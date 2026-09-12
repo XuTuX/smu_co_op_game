@@ -536,7 +536,33 @@ kbd {
   font-weight: 950;
 }
 
-.success-banner.damage-banner { background: #ff9c89; }
+.success-banner.damage-banner { background: #ff9c89; font-size: clamp(14px, 1.9vw, 22px); }
+
+.tutorial-coach {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 24;
+  display: inline-block;
+  max-width: min(600px, calc(100% - 90px));
+  transform: translateX(-50%) translateY(-10px);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: rgba(255, 253, 247, .96);
+  box-shadow: 5px 6px 0 var(--ink);
+  padding: 10px 22px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 240ms ease, transform 240ms ease, visibility 240ms;
+}
+.tutorial-coach.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.tutorial-coach strong { color: #b23a2c; font-size: clamp(15px, 1.7vw, 21px); line-height: 1.3; letter-spacing: .01em; }
 
 .success-banner {
   position: absolute;
@@ -592,6 +618,10 @@ kbd {
 .btn-card:hover { transform: translateY(-3px); box-shadow: 8px 10px 0 var(--ink); }
 .btn-card.active, .btn-card:active { transform: translate(5px, 6px) !important; box-shadow: 1px 1px 0 var(--ink) !important; filter: saturate(1.35) brightness(.95); }
 .site-footer { justify-content: space-between; gap: 18px; padding: 34px 4px 0; color: var(--muted); font-size: 10px; }
+.utility-footer { display: flex; justify-content: flex-end; padding: 16px 5px 0; }
+.diagnostic-link { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .02em; opacity: .38; text-decoration: none; transition: opacity 120ms ease; }
+.diagnostic-link:hover, .diagnostic-link:focus-visible { opacity: .82; text-decoration: underline; }
+.is-playing .utility-footer { display: none; }
 .hidden { display: none !important; }
 
 @keyframes modal-enter { from { transform: translateY(18px) rotate(-1deg); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -612,6 +642,8 @@ kbd {
 }
 
 @media (max-width: 620px) {
+  .tutorial-coach { top: 7px; max-width: calc(100% - 40px); padding: 6px 14px; border-width: 2px; box-shadow: 2px 3px 0 var(--ink); }
+  .tutorial-coach strong { font-size: 12px; }
   .steering-hud { top: 8px; left: 8px; width: 118px; padding: 6px 8px; box-shadow: 2px 3px 0 var(--ink); }
   .steering-heading span,
   .steering-amount span { font-size: 7px; }

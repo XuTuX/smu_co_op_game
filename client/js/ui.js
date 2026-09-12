@@ -16,6 +16,9 @@ class UIController {
     this.steeringDirection = document.getElementById('steering-direction');
     this.steeringWheel = document.getElementById('steering-wheel');
     this.steeringValue = document.getElementById('steering-value');
+    this.tutorialCoach = document.getElementById('tutorial-coach');
+    this.tutorialInstruction = document.getElementById('tutorial-instruction');
+    this.coachHideTimer = null;
 
     // Button Indicator Elements
     this.btnForward = document.getElementById('btn-forward');
@@ -84,6 +87,22 @@ class UIController {
     this.livesElement.setAttribute('aria-label', `목숨 ${safeLives}개`);
   }
 
+  showCoach(message, durationMs = 3500) {
+    if (!this.tutorialCoach) return;
+    if (this.tutorialInstruction) this.tutorialInstruction.textContent = message;
+    this.tutorialCoach.classList.add('is-visible');
+    window.clearTimeout(this.coachHideTimer);
+    this.coachHideTimer = window.setTimeout(() => {
+      this.tutorialCoach.classList.remove('is-visible');
+    }, durationMs);
+  }
+
+  hideCoach() {
+    if (!this.tutorialCoach) return;
+    window.clearTimeout(this.coachHideTimer);
+    this.tutorialCoach.classList.remove('is-visible');
+  }
+
   updateAttemptTime(seconds) {
     if (!this.attemptTimeElement) return;
     const safeSeconds = Math.max(0, Math.ceil(seconds));
@@ -148,15 +167,20 @@ class UIController {
     this.countdownOverlay.classList.add('hidden');
   }
 
-  showRoundTransition(round, obstaclesAdded = 0, movingObstacleAdded = false, scoreAdded = 0, requiresPass = false) {
+  showRoundTransition(round, obstaclesAdded = 0, movingObstacleAdded = false, scoreAdded = 0, requiresPass = false, nameOverride = null) {
     if (!this.stageTransition) return;
     this.stageTransition.className = 'overlay stage-transition';
-    if (this.stageTransitionKicker) this.stageTransitionKicker.textContent = `주차 완료 · +${scoreAdded}점`;
-    if (this.stageTransitionLabel) this.stageTransitionLabel.textContent = `ROUND ${round}`;
+    if (this.stageTransitionKicker) {
+      this.stageTransitionKicker.textContent = scoreAdded > 0
+        ? `주차 완료 · +${scoreAdded}점`
+        : '연습 종료';
+    }
+    if (this.stageTransitionLabel) this.stageTransitionLabel.textContent = `STAGE ${round}`;
     if (this.stageTransitionName) {
-      this.stageTransitionName.textContent = requiresPass
-        ? '주차권 획득 후 주차'
-        : (movingObstacleAdded ? '움직이는 장애물 등장' : (obstaclesAdded > 0 ? '장애물 +1' : '다음 주차 시작'));
+      this.stageTransitionName.textContent = nameOverride
+        || (requiresPass
+          ? '주차권 획득 후 주차'
+          : (movingObstacleAdded ? '움직이는 장애물 등장' : (obstaclesAdded > 0 ? '장애물 +1' : '다음 주차 시작')));
     }
   }
 
@@ -178,28 +202,40 @@ class UIController {
     }, 1800);
   }
 
-  showDamageBanner(lives) {
+  showDamageBanner() {
     if (!this.successBanner) return;
-    this.successBanner.textContent = `충돌! 목숨 ${lives}개`;
+    this.successBanner.textContent = '벽에 부딪혀서 목숨을 잃었어요!';
     this.successBanner.classList.add('damage-banner', 'banner-pop');
     this.successBanner.classList.remove('hidden');
     window.clearTimeout(this.bannerHideTimer);
     this.bannerHideTimer = window.setTimeout(() => {
       this.successBanner.classList.add('hidden');
       this.successBanner.classList.remove('damage-banner', 'banner-pop');
-    }, 1100);
+    }, 1700);
   }
 
-  showTimeoutBanner(lives) {
+  showRetryBanner(message) {
     if (!this.successBanner) return;
-    this.successBanner.textContent = `시간 초과! 목숨 ${lives}개 · 40초 재도전`;
+    this.successBanner.textContent = message;
+    this.successBanner.classList.remove('damage-banner', 'hidden');
+    this.successBanner.classList.add('banner-pop');
+    window.clearTimeout(this.bannerHideTimer);
+    this.bannerHideTimer = window.setTimeout(() => {
+      this.successBanner.classList.add('hidden');
+      this.successBanner.classList.remove('banner-pop');
+    }, 1600);
+  }
+
+  showTimeoutBanner() {
+    if (!this.successBanner) return;
+    this.successBanner.textContent = '시간 초과로 목숨을 잃었어요!';
     this.successBanner.classList.add('damage-banner', 'banner-pop');
     this.successBanner.classList.remove('hidden');
     window.clearTimeout(this.bannerHideTimer);
     this.bannerHideTimer = window.setTimeout(() => {
       this.successBanner.classList.add('hidden');
       this.successBanner.classList.remove('damage-banner', 'banner-pop');
-    }, 1500);
+    }, 1700);
   }
 
   showPassBanner() {

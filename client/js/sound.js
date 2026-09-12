@@ -25,11 +25,6 @@ class SoundEngine {
         bpm: 116, type: 'triangle', volume: 0.038, duration: 0.2,
         melody: [392, 493.88, 587.33, 493.88, 440, 523.25, 659.25, 523.25],
         bass: [130.81, 164.81, 146.83, 174.61]
-      },
-      timing: {
-        bpm: 108, type: 'sine', volume: 0.04, duration: 0.24,
-        melody: [329.63, null, 392, 440, null, 392, 293.66, 329.63],
-        bass: [110, 123.47, 98, 110]
       }
     };
   }

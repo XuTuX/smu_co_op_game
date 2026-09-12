@@ -1,11 +1,11 @@
 {
   "name": "esp32-bus-parking-server",
   "version": "1.0.0",
-  "description": "ESP32 4-button cooperative parking, obstacle-dodge, jump-rope, and timing-jump game server",
+  "description": "ESP32 cooperative parking, obstacle-dodge, and jump-rope game server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test_physics.js && node test_difficulty.js && node test_traffic_input.js && node test_ready_check.js && node test_traffic_difficulty.js && node test_jump_rope.js && node test_beat_jump.js && node test_sound.js && node test_ui_cleanup.js && node test_channel_routing.js && node test_firmware_protocol.js && node test_e2e.js && node test_ap_bridge.js"
+    "test": "node test_physics.js && node test_difficulty.js && node test_parking_tutorial.js && node test_traffic_input.js && node test_ready_check.js && node test_traffic_difficulty.js && node test_jump_rope.js && node test_sound.js && node test_ui_cleanup.js && node test_channel_routing.js && node test_firmware_protocol.js && node test_e2e.js && node test_ap_bridge.js"
   },
   "dependencies": {
     "express": "^4.19.2",

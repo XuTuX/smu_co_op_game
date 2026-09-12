@@ -124,18 +124,16 @@ async function runTest() {
   }
   console.log('✅ TEST PASSED: four-player jump-rope page is served');
 
-  const beatJumpHtml = await new Promise((resolve, reject) => {
+  const removedGameResponse = await new Promise((resolve, reject) => {
     http.get(`http://localhost:${TEST_PORT}/beat-jump.html`, (response) => {
-      let body = '';
-      response.setEncoding('utf8');
-      response.on('data', (chunk) => { body += chunk; });
-      response.on('end', () => resolve({ statusCode: response.statusCode, body }));
+      response.resume();
+      response.on('end', () => resolve(response));
     }).on('error', reject);
   });
-  if (beatJumpHtml.statusCode !== 200 || !beatJumpHtml.body.includes('버튼을 눌러 준비하세요')) {
-    throw new Error(`Expected beat-jump page, got HTTP ${beatJumpHtml.statusCode}`);
+  if (removedGameResponse.statusCode !== 404) {
+    throw new Error(`Expected removed timing-jump page to return 404, got ${removedGameResponse.statusCode}`);
   }
-  console.log('✅ TEST PASSED: left/right beat-jump page is served');
+  console.log('✅ TEST PASSED: removed timing-jump page is no longer served');
 
   // 1. Connect Browser Client
   const browserWs = new WebSocket(`ws://localhost:${TEST_PORT}`);

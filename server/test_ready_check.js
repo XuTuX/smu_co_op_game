@@ -36,7 +36,6 @@ load('client/js/input.js', 'window.TestInputManager = InputManager;');
 load('client/js/game.js', 'window.TestParkingGame = Game;');
 load('client/js/traffic-game.js', 'window.TestTrafficGame = ObstacleDodgeGame;');
 load('client/js/jump-rope.js', 'window.TestJumpRopeGame = TeamJumpRopeGame;');
-load('client/js/beat-jump.js', 'window.TestBeatJumpGame = BeatJumpGame;');
 
 const ACTIONS = ['forward', 'backward', 'left', 'right'];
 
@@ -156,10 +155,6 @@ verifySequentialReady(context.window.TestJumpRopeGame, 'Jump rope');
 verifySimultaneousReady(context.window.TestJumpRopeGame, 'Jump rope');
 verifyReadyToggle(context.window.TestJumpRopeGame, 'Jump rope');
 verifyGameOverRestart(context.window.TestJumpRopeGame, 'Jump rope');
-verifySequentialReady(context.window.TestBeatJumpGame, 'Beat jump');
-verifySimultaneousReady(context.window.TestBeatJumpGame, 'Beat jump');
-verifyReadyToggle(context.window.TestBeatJumpGame, 'Beat jump');
-verifyGameOverRestart(context.window.TestBeatJumpGame, 'Beat jump');
 
 // Pointerdown already creates the ready edge. The browser's follow-up click
 // must not create a second pulse that immediately cancels P1/P2 readiness.
@@ -194,4 +189,4 @@ keyboardHarness.input.handleKeyEvent('KeyS', false);
 keyboardHarness.input.pulseAction('backward', 100);
 assert.strictEqual(keyboardHarness.game.readyPlayers.backward, true, 'Parking: releasing S must keep P2 ready despite the keyup movement pulse');
 
-console.log('✅ READY CHECK TEST PASSED: all four games support ready toggles and a two-button three-second game-over restart hold');
+console.log('✅ READY CHECK TEST PASSED: all three games support ready toggles and a two-button three-second game-over restart hold');

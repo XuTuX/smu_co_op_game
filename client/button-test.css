@@ -6,7 +6,7 @@
     var(--cream);
 }
 
-.test-brand, .mode-link.test-active { background: var(--green); }
+.test-brand { background: var(--green); }
 .test-brand { width: 62px; font-size: 19px; }
 .test-subtitle { margin: 2px 0 0; color: #70675d; font-size: 13px; font-weight: 800; }
 .status-cluster { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }

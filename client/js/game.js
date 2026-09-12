@@ -30,6 +30,7 @@ class Game {
     this.lives = CONFIG.PARKING_RUN.STARTING_LIVES;
     this.attemptTimeRemaining = CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC;
     this.hasParkingPass = true;
+    this.passCoachShown = false;
     this.collisionCooldown = 0;
     this.lastTime = 0;
     this.readyActions = ['forward', 'backward', 'left', 'right'];
@@ -93,6 +94,21 @@ class Game {
     return { forward: false, backward: false, left: false, right: false };
   }
 
+  isTutorialRound() {
+    return this.round === 1;
+  }
+
+  showRoundCoach() {
+    if (this.round === 1) {
+      this.ui.showCoach('연습라운드예요! 벽에 부딪혀도 목숨을 잃지 않아요!', 4000);
+      return;
+    }
+    if (!this.hasParkingPass && !this.passCoachShown) {
+      this.passCoachShown = true;
+      this.ui.showCoach('주차권을 먹어야 주차할 수 있어요!', 4500);
+    }
+  }
+
   beginReadyCheck() {
     this.soundEngine.stopMusic?.();
     window.clearTimeout(this.readyStartTimer);
@@ -107,6 +123,7 @@ class Game {
     this.ui.hideCountdown();
     this.ui.hideGameOver();
     this.ui.hideStageTransition();
+    this.ui.hideCoach();
     this.ui.showStartScreen();
     this.inputManager.resetAll();
     this.state = 'READY';
@@ -194,6 +211,7 @@ class Game {
     this.lives = CONFIG.PARKING_RUN.STARTING_LIVES;
     this.attemptTimeRemaining = CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC;
     this.hasParkingPass = true;
+    this.passCoachShown = false;
     this.collisionCooldown = 0;
     this.ui.updateScore(0);
     this.ui.updateRound(this.round);
@@ -228,6 +246,7 @@ class Game {
         this.soundEngine.playCountdown(0);
         this.soundEngine.startMusic('parking');
         this.state = 'PLAYING';
+        this.showRoundCoach();
         this.countdownHideTimer = window.setTimeout(() => this.ui.hideCountdown(), 500);
       }
     }, 1000);
@@ -245,29 +264,40 @@ class Game {
   }
 
   handleParkingSuccess(spot) {
+    const isPractice = this.isTutorialRound();
     const timeBonus = Math.max(0, Math.ceil(this.attemptTimeRemaining));
-    const parkingPoints = CONFIG.SCORING.PARKING_SUCCESS + timeBonus;
-    this.score += parkingPoints;
-    this.parkCount++;
-    this.ui.updateScore(this.score);
+    const parkingPoints = isPractice ? 0 : CONFIG.SCORING.PARKING_SUCCESS + timeBonus;
+    if (!isPractice) {
+      this.score += parkingPoints;
+      this.parkCount++;
+      this.ui.updateScore(this.score);
+    }
     this.soundEngine.playSuccess();
 
     // Spawn Confetti Particles
     this.spawnConfetti(spot.x, spot.y);
 
+    this.finishRound(parkingPoints, spot.id);
+  }
+
+  finishRound(parkingPoints = 0, spotId = null) {
     const nextRound = this.round + 1;
     const currentObstacleCount = this.map.getObstacleCountForRound(this.round);
     const nextObstacleCount = this.map.getObstacleCountForRound(nextRound);
     const movingObstacleAdded = this.map.getMovingObstacleCountForRound(nextRound)
       > this.map.getMovingObstacleCountForRound(this.round);
+    const practiceDone = this.isTutorialRound();
+    const transitionMs = practiceDone ? 2600 : CONFIG.PARKING_RUN.ROUND_TRANSITION_MS;
     this.state = 'TRANSITION';
+    this.ui.hideCoach();
     this.inputManager.resetAll();
     this.ui.showRoundTransition(
       nextRound,
       nextObstacleCount - currentObstacleCount,
       movingObstacleAdded,
       parkingPoints,
-      nextRound >= 5
+      nextRound >= 5,
+      practiceDone ? '연습을 다 하셨나요? 이제 시작해보죠!' : null
     );
 
     setTimeout(() => {
@@ -276,7 +306,7 @@ class Game {
       // Keep the bus where it parked and grow the same lot around it.
       this.map.advanceRound(this.round, this.bus.x, this.bus.y);
       this.applyDifficulty();
-      const nextSpot = this.map.getSpotForRound(this.round, spot.id, this.bus.x, this.bus.y);
+      const nextSpot = this.map.getSpotForRound(this.round, spotId, this.bus.x, this.bus.y);
       this.map.setActiveParkingSpot(nextSpot);
       this.parkingJudge.setTargetSpot(nextSpot);
       this.hasParkingPass = this.round < 5;
@@ -292,7 +322,8 @@ class Game {
       this.ui.updateRound(this.round);
       this.ui.hideStageTransition();
       this.state = 'PLAYING';
-    }, CONFIG.PARKING_RUN.ROUND_TRANSITION_MS);
+      this.showRoundCoach();
+    }, transitionMs);
   }
 
   handleCollision(collisionData) {
@@ -301,6 +332,15 @@ class Game {
     this.shakeIntensity = impact;
     this.soundEngine.playCrash();
     this.spawnSparks(collisionData.x, collisionData.y);
+    if (this.isTutorialRound()) {
+      this.collisionCooldown = CONFIG.PARKING_RUN.COLLISION_COOLDOWN_SEC;
+      this.attemptTimeRemaining = CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC;
+      this.ui.updateAttemptTime(this.attemptTimeRemaining);
+      this.ui.showRetryBanner('벽에 부딪혔어요! 다시 도전');
+      this.inputManager.resetAll();
+      this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
+      return;
+    }
     this.lives--;
     this.ui.updateLives(this.lives);
 
@@ -315,13 +355,19 @@ class Game {
     this.collisionCooldown = CONFIG.PARKING_RUN.COLLISION_COOLDOWN_SEC;
     this.attemptTimeRemaining = CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC;
     this.ui.updateAttemptTime(this.attemptTimeRemaining);
-    this.ui.showDamageBanner(this.lives);
+    this.ui.showDamageBanner();
     this.inputManager.resetAll();
     this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
   }
 
   handleAttemptTimeout() {
     if (this.state !== 'PLAYING') return;
+    if (this.isTutorialRound()) {
+      // Practice time-over simply graduates the players into the real game.
+      const spot = this.parkingJudge.currentSpot;
+      this.finishRound(0, spot ? spot.id : null);
+      return;
+    }
     this.lives--;
     this.ui.updateLives(this.lives);
     this.attemptTimeRemaining = CONFIG.PARKING_RUN.ATTEMPT_TIME_SEC;
@@ -336,7 +382,7 @@ class Game {
     }
 
     this.collisionCooldown = CONFIG.PARKING_RUN.COLLISION_COOLDOWN_SEC;
-    this.ui.showTimeoutBanner(this.lives);
+      this.ui.showTimeoutBanner();
     this.inputManager.resetAll();
     this.bus.reset(this.map.spawnPoint.x, this.map.spawnPoint.y, this.map.spawnPoint.angle);
     this.parkingJudge.setTargetSpot(this.parkingJudge.currentSpot);

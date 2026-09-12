@@ -41,7 +41,7 @@ const soundSource = fs.readFileSync(path.join(__dirname, '..', 'client/js/sound.
 vm.runInContext(`${soundSource}\nwindow.TestSoundEngine = SoundEngine;`, context, { filename: 'sound.js' });
 
 const engine = new context.window.TestSoundEngine();
-for (const theme of ['parking', 'traffic', 'rope', 'timing']) {
+for (const theme of ['parking', 'traffic', 'rope']) {
   oscillatorCount = 0;
   engine.startMusic(theme);
   assert.strictEqual(engine.musicTheme, engine.musicThemes[theme], `${theme} should select its own music theme`);
@@ -63,8 +63,7 @@ assert.strictEqual(buttonEngine.toggleFromButton(), true, 'later sound-button pr
 const expectedThemes = {
   'js/game.js': 'parking',
   'js/traffic-game.js': 'traffic',
-  'js/jump-rope.js': 'rope',
-  'js/beat-jump.js': 'timing'
+  'js/jump-rope.js': 'rope'
 };
 for (const [filename, theme] of Object.entries(expectedThemes)) {
   const source = fs.readFileSync(path.join(__dirname, '..', 'client', filename), 'utf8');
@@ -73,4 +72,4 @@ for (const [filename, theme] of Object.entries(expectedThemes)) {
   assert(source.includes('toggleFromButton()'), `${filename} should use the shared sound-button behavior`);
 }
 
-console.log('✅ SOUND TEST PASSED: four distinct music themes start, stop, and mute consistently');
+console.log('✅ SOUND TEST PASSED: three distinct music themes start, stop, and mute consistently');

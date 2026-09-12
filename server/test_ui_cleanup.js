@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const clientRoot = path.join(__dirname, '..', 'client');
-const pages = ['index.html', 'traffic.html', 'jump-rope.html', 'beat-jump.html', 'button-test.html'];
+const pages = ['index.html', 'traffic.html', 'jump-rope.html', 'button-test.html'];
 const forbiddenPageText = [
   '4-PLAYER CO-OP', 'PC TEST MODE', 'INPUT READY', 'TEAM SCORE', 'TEAM LIFE',
   'POINTS', 'TIME\'S UP', 'GAME OVER', 'PARKING MODE', 'BLOCK HOP', 'TEAM ROPE',
@@ -18,8 +18,11 @@ for (const filename of pages) {
   }
 }
 
-for (const filename of ['index.html', 'traffic.html', 'jump-rope.html', 'beat-jump.html']) {
+for (const filename of ['index.html', 'traffic.html', 'jump-rope.html']) {
   const source = fs.readFileSync(path.join(clientRoot, filename), 'utf8');
+  const gameNav = source.match(/<nav class="mode-switch"[\s\S]*?<\/nav>/)?.[0] || '';
+  assert(!gameNav.includes('button-test.html'), `${filename} should keep diagnostics out of the primary game tabs`);
+  assert(source.includes('class="diagnostic-link" href="button-test.html"'), `${filename} should expose diagnostics only through the subtle footer link`);
   assert.strictEqual((source.match(/버튼을 눌러 준비하세요\./g) || []).length, 1, `${filename} should use the shared ready instruction`);
   assert.strictEqual((source.match(/>준비<\/button>/g) || []).length, 4, `${filename} should show four identical ready buttons`);
   assert.strictEqual((source.match(/class="role-card[^\n]+<strong>/g) || []).length, 4, `${filename} should show a role for every player`);
@@ -27,7 +30,11 @@ for (const filename of ['index.html', 'traffic.html', 'jump-rope.html', 'beat-ju
   assert.strictEqual((source.match(/>다시하기<\/button>/g) || []).length, 1, `${filename} should use the shared restart label`);
 }
 
-const gameScripts = ['js/game.js', 'js/ui.js', 'js/traffic-game.js', 'js/jump-rope.js', 'js/beat-jump.js'];
+const buttonTestSource = fs.readFileSync(path.join(clientRoot, 'button-test.html'), 'utf8');
+const buttonTestNav = buttonTestSource.match(/<nav class="mode-switch"[\s\S]*?<\/nav>/)?.[0] || '';
+assert(!buttonTestNav.includes('button-test.html'), 'button diagnostics must not appear as its own primary tab');
+
+const gameScripts = ['js/game.js', 'js/ui.js', 'js/traffic-game.js', 'js/jump-rope.js'];
 const scriptSource = gameScripts
   .map((filename) => fs.readFileSync(path.join(clientRoot, filename), 'utf8'))
   .join('\n');
