@@ -425,11 +425,17 @@ class ObstacleDodgeGame {
       else this.player.movePose = 'right';
       this.trail.push({ x: this.player.x, y: this.player.y, alpha: 0.48 });
       if (this.trail.length > 24) this.trail.shift();
+      const previousTargetX = this.player.targetX;
+      const previousTargetY = this.player.targetY;
       this.player.targetX += moveX * this.cellWidth;
       this.player.targetY += moveY * this.verticalStep;
       this.player.targetX = Math.max(this.arena.left + this.cellWidth / 2, Math.min(this.arena.right - this.cellWidth / 2, this.player.targetX));
       this.player.targetY = Math.max(this.arena.top + this.verticalStep / 2, Math.min(this.arena.bottom - this.verticalStep / 2, this.player.targetY));
       this.player.hop = 1;
+      // 벽에 막혀 실제로 칸이 바뀌지 않았으면 이동음을 내지 않는다.
+      if (this.player.targetX !== previousTargetX || this.player.targetY !== previousTargetY) {
+        this.soundEngine.playMove?.();
+      }
     }
 
     const ease = Math.min(1, dt * 15);
@@ -748,7 +754,7 @@ class ObstacleDodgeGame {
       if (dx * dx + dy * dy <= (this.player.radius + star.radius) ** 2) {
         this.collectibles.splice(index, 1);
         this.bonusScore += 10;
-        this.soundEngine.playSuccess();
+        this.soundEngine.playStarBonus?.();
         this.showToast('★ 별 획득 +10');
         continue;
       }

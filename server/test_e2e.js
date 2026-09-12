@@ -98,6 +98,17 @@ async function runTest() {
   }
   console.log('✅ TEST PASSED: obstacle-dodge character asset is served');
 
+  const soundAsset = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${TEST_PORT}/assets/sound/background_music.mp3`, (response) => {
+      response.resume();
+      response.on('end', () => resolve(response));
+    }).on('error', reject);
+  });
+  if (soundAsset.statusCode !== 200 || !String(soundAsset.headers['content-type']).startsWith('audio/')) {
+    throw new Error(`Expected bundled background music MP3, got ${soundAsset.statusCode} ${soundAsset.headers['content-type']}`);
+  }
+  console.log('✅ TEST PASSED: bundled background music MP3 is served');
+
   const buttonTestHtml = await new Promise((resolve, reject) => {
     http.get(`http://localhost:${TEST_PORT}/button-test.html`, (response) => {
       let body = '';

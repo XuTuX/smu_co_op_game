@@ -278,7 +278,7 @@ class Game {
       this.parkCount++;
       this.ui.updateScore(this.score);
     }
-    this.soundEngine.playSuccess();
+    this.soundEngine.playBusSuccess?.();
 
     // Spawn Confetti Particles
     this.spawnConfetti(spot.x, spot.y);
@@ -336,7 +336,7 @@ class Game {
     if (this.state !== 'PLAYING' || this.collisionCooldown > 0) return;
     const impact = Math.min(15, Math.abs(collisionData.speed) * 3 + 2);
     this.shakeIntensity = impact;
-    this.soundEngine.playCrash();
+    this.soundEngine.playCarCrash?.();
     this.spawnSparks(collisionData.x, collisionData.y);
     if (this.isTutorialRound()) {
       this.collisionCooldown = CONFIG.PARKING_RUN.COLLISION_COOLDOWN_SEC;
@@ -493,6 +493,11 @@ class Game {
       }
 
     }
+
+    // Bus engine/driving loop: only while the bus is actually rolling during play.
+    const busRolling = this.state === 'PLAYING'
+      && Math.abs(this.bus.speed) > CONFIG.PARKING.MAX_STOP_SPEED;
+    this.soundEngine.setCarMoving?.(busRolling);
 
     // Update screen shake decay
     if (this.shakeIntensity > 0.05) {

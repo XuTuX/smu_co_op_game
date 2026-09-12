@@ -55,7 +55,14 @@ function makeHarness() {
   game.ropeAngle = -Math.PI / 2;
   game.state = 'PLAYING';
   game.players = game.createPlayers();
-  game.soundEngine = { playBeep() {}, playSuccess() {}, playCrash() {} };
+  game.sounds = [];
+  game.soundEngine = {
+    playBeep() {},
+    playSuccess() { game.sounds.push('success'); },
+    playStarBonus() { game.sounds.push('star'); },
+    playRopeFail() { game.sounds.push('ropeFail'); },
+    playCrash() { game.sounds.push('crash'); }
+  };
   game.showCallout = () => {};
   game.endGame = () => {};
   return game;
@@ -87,6 +94,8 @@ passGame.players.forEach((player) => { player.height = 100; });
 passGame.resolveRopePass();
 assert.strictEqual(passGame.score, 7, 'four clear players should add four team points');
 assert.strictEqual(passGame.perfectCount, 1, 'all four clearing together should count as perfect');
+assert(passGame.sounds.includes('star'), 'a cleared jump-rope pass should play the star bonus sound');
+assert.deepStrictEqual(passGame.sounds.slice(-1), ['star'], 'the perfect pass should end on the star bonus sound');
 
 const speedGame = makeHarness();
 const startingSpeed = speedGame.getRopeSpeed();

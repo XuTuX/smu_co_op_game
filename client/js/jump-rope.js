@@ -398,12 +398,12 @@ class TeamJumpRopeGame {
         this.feverGauge = 0;
         this.feverRemaining = 7;
       }
-      this.soundEngine.playSuccess();
+      this.soundEngine.playStarBonus?.();
     } else {
       this.failPulse = 1;
       this.sharedLives = Math.max(0, this.sharedLives - 1);
       this.combo = 0;
-      this.soundEngine.playCrash();
+      this.soundEngine.playRopeFail?.();
       this.shake = 13;
       this.hitFreeze = 0.1;
     }
