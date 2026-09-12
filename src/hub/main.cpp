@@ -266,6 +266,10 @@ String contentType(const String& path) {
   if (path.endsWith(".png")) return "image/png";
   if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
   if (path.endsWith(".svg")) return "image/svg+xml";
+  if (path.endsWith(".mp3")) return "audio/mpeg";
+  if (path.endsWith(".m4a") || path.endsWith(".mp4")) return "audio/mp4";
+  if (path.endsWith(".wav")) return "audio/wav";
+  if (path.endsWith(".ogg")) return "audio/ogg";
   return "application/octet-stream";
 }
 

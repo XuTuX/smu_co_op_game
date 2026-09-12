@@ -32,6 +32,7 @@ class Game {
     this.hasParkingPass = true;
     this.passCoachShown = false;
     this.collisionCooldown = 0;
+    this.steeringSoundHold = 0;
     this.lastTime = 0;
     this.readyActions = ['forward', 'backward', 'left', 'right'];
     this.readyPlayers = this.createReadyState();
@@ -200,6 +201,7 @@ class Game {
 
   startCountdown() {
     this.soundEngine.init(); // Initialize audio context on user interaction
+    this.soundEngine.prepareMusic?.('parking'); // 버스 주차 전용 배경음악 미리 버퍼링
     this.state = 'COUNTDOWN';
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);
@@ -219,6 +221,7 @@ class Game {
     this.hasParkingPass = true;
     this.passCoachShown = false;
     this.collisionCooldown = 0;
+    this.steeringSoundHold = 0;
     this.ui.updateScore(0);
     this.ui.updateRound(this.round);
     this.ui.updateLives(this.lives);
@@ -470,7 +473,11 @@ class Game {
       const inputs = this.inputManager.getCombinedState();
 
       // Update bus physics
+      const steeringBefore = this.bus.steeringAngle;
       this.bus.update(inputs, dt);
+      // 핸들이 실제로 움직였는지 추적해 조향음을 켠다 (버스가 멈춰 있어도 동작).
+      const steeringMoved = Math.abs(this.bus.steeringAngle - steeringBefore) > 0.0005;
+      this.steeringSoundHold = steeringMoved ? 0.14 : Math.max(0, this.steeringSoundHold - dt);
 
       // Moving maintenance vehicles start appearing from round five.
       this.map.update(dt);
@@ -498,6 +505,8 @@ class Game {
     const busRolling = this.state === 'PLAYING'
       && Math.abs(this.bus.speed) > CONFIG.PARKING.MAX_STOP_SPEED;
     this.soundEngine.setCarMoving?.(busRolling);
+    // 핸들을 돌리는 동안(정지 포함) 조향음을 재생하고, 놓으면 짧게 여운을 두고 멈춘다.
+    this.soundEngine.setSteeringTurning?.(this.state === 'PLAYING' && this.steeringSoundHold > 0);
 
     // Update screen shake decay
     if (this.shakeIntensity > 0.05) {

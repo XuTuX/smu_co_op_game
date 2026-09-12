@@ -57,10 +57,29 @@ function createHarness() {
 // --- Background music plays the bundled MP3 and stops cleanly -----------------
 const music = createHarness();
 music.engine.startMusic('parking');
-assert(music.engine.musicFile, 'startMusic should attach an <audio> element for background_music.mp3');
+assert(music.engine.musicFile, 'startMusic should attach an <audio> element for the parking music');
 assert(music.engine.musicFile.loop, 'background music should loop');
-assert(music.engine.musicFile.src.endsWith('background_music.mp3'), 'background music should load background_music.mp3');
-assert(music.events.plays.some((src) => src.endsWith('background_music.mp3')), 'background music should start playing');
+assert(
+  music.engine.musicFile.src.endsWith('bus_Game_background.mp3'),
+  'the parking game should load its own bus_Game_background.mp3'
+);
+assert(
+  music.events.plays.some((src) => src.endsWith('bus_Game_background.mp3')),
+  'the parking background music should start playing'
+);
+
+// Traffic and jump-rope keep the shared track instead of the bus song.
+const sharedMusic = createHarness();
+sharedMusic.engine.prepareMusic('traffic');
+assert(
+  sharedMusic.events.created.some((element) => element.src.endsWith('background_music.mp3')),
+  'traffic should preload the shared background_music.mp3 during the countdown'
+);
+sharedMusic.engine.startMusic('traffic');
+assert(
+  sharedMusic.engine.musicFile.src.endsWith('background_music.mp3'),
+  'traffic should keep the shared background_music.mp3'
+);
 
 music.engine.setMuted(true);
 assert.strictEqual(music.engine.musicFile.volume, 0, 'muting should silence the background music element');
@@ -132,15 +151,39 @@ car.engine.setCarMoving(false);
 assert.strictEqual(car.engine.carAudio.paused, true, 'the car sound should pause when the bus stops');
 assert(car.engine.carAudio.currentTime === 0, 'the car sound should rewind when the bus stops');
 
+// --- The parking wheel loops bus_direction.mp3 while steering -----------------
+const steering = createHarness();
+steering.engine.init();
+steering.engine.setSteeringTurning(true);
+assert(steering.engine.steeringAudio, 'setSteeringTurning(true) should attach a bus_direction.mp3 element');
+assert(steering.engine.steeringAudio.loop, 'the steering sound should loop while the wheel turns');
+assert(
+  steering.engine.steeringAudio.src.endsWith('bus_direction.mp3'),
+  'the steering sound should load bus_direction.mp3'
+);
+assert(
+  steering.events.plays.some((src) => src.endsWith('bus_direction.mp3')),
+  'the steering sound should play while the wheel turns'
+);
+const steeringPlays = steering.events.plays.length;
+steering.engine.setSteeringTurning(true);
+assert.strictEqual(steering.events.plays.length, steeringPlays, 'the steering loop must not restart on every frame');
+steering.engine.setSteeringTurning(false);
+assert.strictEqual(steering.engine.steeringAudio.paused, true, 'the steering sound should pause when the wheel stops');
+
 // --- The games call the new event methods -------------------------------------
 const wiring = [
   ['js/game.js', 'playBusSuccess'],
   ['js/game.js', 'playCarCrash'],
   ['js/game.js', 'setCarMoving'],
+  ['js/game.js', 'setSteeringTurning'],
+  ['js/game.js', "prepareMusic?.('parking')"],
   ['js/traffic-game.js', 'playStarBonus'],
   ['js/traffic-game.js', 'playMove'],
+  ['js/traffic-game.js', "prepareMusic?.('traffic')"],
   ['js/jump-rope.js', 'playStarBonus'],
-  ['js/jump-rope.js', 'playRopeFail']
+  ['js/jump-rope.js', 'playRopeFail'],
+  ['js/jump-rope.js', "prepareMusic?.('rope')"]
 ];
 for (const [file, method] of wiring) {
   const source = fs.readFileSync(path.join(__dirname, '..', 'client', file), 'utf8');

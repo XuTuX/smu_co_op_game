@@ -201,6 +201,7 @@ class TeamJumpRopeGame {
 
   startCountdown() {
     this.soundEngine.init();
+    this.soundEngine.prepareMusic?.('rope');
     this.state = 'COUNTDOWN';
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);

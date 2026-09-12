@@ -276,6 +276,7 @@ class ObstacleDodgeGame {
 
   startCountdown() {
     this.soundEngine.init();
+    this.soundEngine.prepareMusic?.('traffic');
     this.state = 'COUNTDOWN';
     window.clearTimeout(this.readyStartTimer);
     window.clearInterval(this.countdownInterval);

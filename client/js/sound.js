@@ -36,8 +36,7 @@ class SoundEngine {
     // as a fallback so the games still make noise if an asset is missing or the
     // browser refuses HTMLAudio.
     this.soundFiles = {
-      // 배경음악은 효과음을 가리지 않도록 낮게, 효과음은 크게 유지한다.
-      music: { file: 'background_music.mp3', volume: 0.18 },
+      // 효과음은 배경음악을 가리지 않도록 크게 유지한다.
       busSuccess: { file: 'bus_success.mp3', volume: 0.9 },
       gameOver: { file: 'game_over.mp3', volume: 0.95 },
       ropeFail: { file: 'rope_fail.mp3', volume: 0.95 },
@@ -47,15 +46,24 @@ class SoundEngine {
       carSound: { file: 'car_sound.mp3', volume: 0.4 },
       carCrash: { file: 'car_crush.mp3', volume: 0.95 }
     };
-    this.musicFileVolume = this.soundFiles.music.volume;
+    // 게임별 배경음악. 버스 주차는 전용 곡, 장애물·줄넘기는 공용 곡을 쓴다.
+    this.musicTracks = {
+      parking: { file: 'bus_Game_background.mp3', volume: 0.18 },
+      traffic: { file: 'background_music.mp3', volume: 0.18 },
+      rope: { file: 'background_music.mp3', volume: 0.18 }
+    };
+    this.musicFileVolume = this.musicTracks.traffic.volume;
     this.musicFile = null;
-    this.musicAudio = undefined;
+    this.musicAudio = {};
     this.audioBaseCandidates = null;
     this.effectAudio = {};
     this.effectStatus = {};
     this.countdownSoundPlaying = false;
     this.carAudio = undefined;
     this.carMoving = false;
+    this.steeringAudio = undefined;
+    this.steeringTurning = false;
+    this.steeringSound = { file: 'bus_direction.mp3', volume: 0.55 };
     this.unlockBound = false;
     this.installUnlockHandlers();
   }
@@ -72,6 +80,7 @@ class SoundEngine {
       this.init();
       if (this.musicFile && this.musicFile.paused && !this.isMuted) this.playAudio(this.musicFile);
       if (this.carAudio && this.carMoving && this.carAudio.paused && !this.isMuted) this.playAudio(this.carAudio);
+      if (this.steeringAudio && this.steeringTurning && this.steeringAudio.paused && !this.isMuted) this.playAudio(this.steeringAudio);
     };
     for (const type of ['pointerdown', 'keydown', 'touchstart']) {
       document.addEventListener(type, unlock, { once: true, passive: true });
@@ -89,7 +98,7 @@ class SoundEngine {
       this.ctx.resume();
     }
     this.preloadEffects();
-    this.loadMusicAudio();
+    this.loadSteeringAudio();
   }
 
   // ---------------------------------------------------------------------------
@@ -211,6 +220,10 @@ class SoundEngine {
       this.carAudio.volume = this.isMuted ? 0 : this.soundFiles.carSound.volume;
       if (!this.isMuted && this.carMoving) this.playAudio(this.carAudio);
     }
+    if (this.steeringAudio) {
+      this.steeringAudio.volume = this.isMuted ? 0 : this.steeringSound.volume;
+      if (!this.isMuted && this.steeringTurning) this.playAudio(this.steeringAudio);
+    }
     if (this.musicGain && this.ctx) {
       const volume = this.isMuted ? 0.0001 : (this.musicTheme?.volume || 0.04);
       this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
@@ -235,10 +248,12 @@ class SoundEngine {
     if (!this.musicThemes[themeName]) return;
     this.stopMusic();
     this.musicTheme = this.musicThemes[themeName];
-    const audio = this.loadMusicAudio();
+    const track = this.musicTracks[themeName];
+    const audio = track ? this.loadMusicAudio(track) : null;
     if (audio) {
+      this.musicFileVolume = track.volume;
       audio.loop = true;
-      audio.volume = this.isMuted ? 0 : this.musicFileVolume;
+      audio.volume = this.isMuted ? 0 : track.volume;
       try { audio.currentTime = 0; } catch (error) {}
       this.musicFile = audio;
       this.playAudio(audio);
@@ -247,21 +262,32 @@ class SoundEngine {
     this.startSynthMusic();
   }
 
-  /** Cached background-music element so the countdown can preload the MP3. */
-  loadMusicAudio() {
-    if (this.musicAudio !== undefined) return this.musicAudio;
-    this.musicAudio = this.createAudio(this.soundFiles.music.file, {
+  /**
+   * Warms a game's background track up during the countdown so GO! starts the
+   * music instantly. Safe to call repeatedly; the element is cached per file.
+   */
+  prepareMusic(themeName) {
+    const track = this.musicTracks[themeName];
+    if (!track) return null;
+    return this.loadMusicAudio(track);
+  }
+
+  /** Cached background-music element keyed by file so shared tracks load once. */
+  loadMusicAudio(track) {
+    const key = track.file;
+    if (this.musicAudio[key] !== undefined) return this.musicAudio[key];
+    this.musicAudio[key] = this.createAudio(key, {
       preload: 'auto',
       loop: true,
-      volume: this.isMuted ? 0 : this.musicFileVolume,
+      volume: this.isMuted ? 0 : track.volume,
       onUnavailable: () => {
-        this.musicAudio = null;
+        this.musicAudio[key] = null;
         if (!this.musicFile) return;
         this.musicFile = null;
         if (this.musicTheme) this.startSynthMusic();
       }
     });
-    return this.musicAudio;
+    return this.musicAudio[key];
   }
 
   startSynthMusic() {
@@ -446,6 +472,35 @@ class SoundEngine {
   /** 버스가 벽이나 장애물에 부딪혔을 때 (assets/sound/car_crush.mp3). */
   playCarCrash() {
     if (!this.playEffect('carCrash')) this.playCrash();
+  }
+
+  /** 버스 핸들을 돌리는 동안 (assets/sound/bus_direction.mp3) 반복 재생. 정지 상태에서도 재생된다. */
+  setSteeringTurning(turning) {
+    const next = Boolean(turning);
+    if (next === this.steeringTurning) return;
+    this.steeringTurning = next;
+    const audio = this.loadSteeringAudio();
+    if (!audio) return;
+    if (next) {
+      audio.volume = this.isMuted ? 0 : this.steeringSound.volume;
+      this.playAudio(audio);
+      return;
+    }
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch (error) {}
+  }
+
+  /** Cached steering element so the wheel sound can start and stop instantly. */
+  loadSteeringAudio() {
+    if (this.steeringAudio !== undefined) return this.steeringAudio;
+    this.steeringAudio = this.createAudio(this.steeringSound.file, {
+      preload: 'auto',
+      loop: true,
+      volume: this.isMuted ? 0 : this.steeringSound.volume
+    });
+    return this.steeringAudio;
   }
 
   /** 줄넘기에서 한 명이라도 줄에 걸렸을 때 (assets/sound/rope_fail.mp3). */
