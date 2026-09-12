@@ -347,6 +347,7 @@ class Game {
     if (this.lives <= 0) {
       this.state = 'GAMEOVER';
       this.soundEngine.stopMusic();
+      this.soundEngine.playGameOver?.();
       this.inputManager.resetAll();
       this.ui.showGameOver(this.score, this.parkCount, this.round);
       return;
@@ -376,6 +377,7 @@ class Game {
     if (this.lives <= 0) {
       this.state = 'GAMEOVER';
       this.soundEngine.stopMusic();
+      this.soundEngine.playGameOver?.();
       this.inputManager.resetAll();
       this.ui.showGameOver(this.score, this.parkCount, this.round);
       return;

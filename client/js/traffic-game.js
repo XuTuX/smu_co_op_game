@@ -1,6 +1,6 @@
 /**
  * Four-player 11x9 grid dodge mode with moving hazards, lasers, and pickups.
- * P1 moves up, P2 down, P3 left, and P4 right.
+ * 위 버튼은 위로, 아래·왼쪽·오른쪽 버튼은 각 방향으로 이동합니다.
  */
 class ObstacleDodgeGame {
   constructor() {
@@ -70,6 +70,13 @@ class ObstacleDodgeGame {
     this.countdownInterval = null;
     this.countdownHideTimer = null;
 
+    this.gameOverPresenter = typeof GameOverPresenter === 'function'
+      ? new GameOverPresenter({
+        modal: document.getElementById('traffic-gameover-modal'),
+        messageElement: document.getElementById('traffic-gameover-message')
+      })
+      : null;
+
     this.bindUI();
     this.inputManager.onChange((inputs) => {
       this.updateInputUI(inputs);
@@ -137,6 +144,7 @@ class ObstacleDodgeGame {
     this.previousReadyInputs = this.createReadyState();
     document.body.classList.remove('is-playing');
     document.getElementById('traffic-countdown').classList.add('hidden');
+    this.gameOverPresenter?.hide();
     document.getElementById('traffic-gameover-modal').classList.add('hidden');
     document.getElementById('traffic-start-modal').classList.remove('hidden');
     this.resetGame();
@@ -266,6 +274,7 @@ class ObstacleDodgeGame {
     document.body.classList.add('is-playing');
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.getElementById('traffic-start-modal').classList.add('hidden');
+    this.gameOverPresenter?.hide();
     document.getElementById('traffic-gameover-modal').classList.add('hidden');
     const overlay = document.getElementById('traffic-countdown');
     const text = document.getElementById('traffic-countdown-text');
@@ -822,10 +831,14 @@ class ObstacleDodgeGame {
     if (this.state === 'GAMEOVER') return;
     this.state = 'GAMEOVER';
     this.soundEngine.stopMusic();
+    this.soundEngine.playGameOver?.();
     this.inputManager.resetAll();
-    document.getElementById('traffic-gameover-message').textContent = '게임 종료';
     document.getElementById('traffic-final-score').textContent = this.score;
-    document.getElementById('traffic-gameover-modal').classList.remove('hidden');
+    if (this.gameOverPresenter) {
+      this.gameOverPresenter.begin();
+    } else {
+      document.getElementById('traffic-gameover-modal').classList.remove('hidden');
+    }
   }
 
   showToast(message) {

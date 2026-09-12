@@ -238,6 +238,12 @@ void redirectToHome() {
   httpServer.send(302, "text/plain", "");
 }
 
+bool isPageNavigation(const String& uri) {
+  const int slash = uri.lastIndexOf('/');
+  const String tail = uri.substring(slash + 1);
+  return tail.length() == 0 || tail.indexOf('.') < 0 || tail.endsWith(".html");
+}
+
 // Return the responses expected by each operating system's connectivity check.
 // Redirecting these URLs to the game makes the OS mistake this AP for a captive
 // portal and repeatedly open its Wi-Fi sign-in window while the game is running.
@@ -293,9 +299,17 @@ void startHttpServer() {
   httpServer.on("/connecttest.txt", HTTP_ANY, sendWindowsConnectTest);
   httpServer.on("/ncsi.txt", HTTP_ANY, sendWindowsNcsi);
   httpServer.on("/canonical.html", HTTP_ANY, sendFirefoxSuccess);
+  httpServer.on("/success.txt", HTTP_ANY, sendFirefoxSuccess);
 
   httpServer.onNotFound([]() {
     if (serveFile(httpServer.uri())) return;
+    // Only real page navigations are sent to the game. Unknown files and the
+    // vendor-specific probe paths of phones/PCs must answer "no content" so the
+    // OS never re-opens its Wi-Fi sign-in window during play.
+    if (!isPageNavigation(httpServer.uri())) {
+      sendNoContent();
+      return;
+    }
     redirectToHome();
   });
 

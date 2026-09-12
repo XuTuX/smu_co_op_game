@@ -1,6 +1,6 @@
 /**
  * Four independent jumpers sharing one rotating rope.
- * P1=forward, P2=backward, P3=left, P4=right.
+ * 노랑=forward, 빨강=backward, 파랑=left, 초록=right.
  */
 class TeamJumpRopeGame {
   constructor() {
@@ -15,10 +15,10 @@ class TeamJumpRopeGame {
 
     this.actions = ['forward', 'backward', 'left', 'right'];
     this.playerMeta = [
-      { action: 'forward', label: 'P1', key: 'W', color: '#facc15', dark: '#a16207' },
-      { action: 'backward', label: 'P2', key: 'S', color: '#fb7185', dark: '#be123c' },
-      { action: 'left', label: 'P3', key: 'A', color: '#38bdf8', dark: '#0369a1' },
-      { action: 'right', label: 'P4', key: 'D', color: '#4ade80', dark: '#15803d' }
+      { action: 'forward', key: 'W', color: '#facc15', dark: '#a16207' },
+      { action: 'backward', key: 'S', color: '#fb7185', dark: '#be123c' },
+      { action: 'left', key: 'A', color: '#38bdf8', dark: '#0369a1' },
+      { action: 'right', key: 'D', color: '#4ade80', dark: '#15803d' }
     ];
     this.playerXs = [500, 700, 900, 1100];
     this.groundY = 690;
@@ -65,6 +65,13 @@ class TeamJumpRopeGame {
     this.countdownHideTimer = null;
     this.calloutTimer = null;
     this.failPulse = 0;
+
+    this.gameOverPresenter = typeof GameOverPresenter === 'function'
+      ? new GameOverPresenter({
+        modal: document.getElementById('rope-gameover-modal'),
+        messageElement: document.getElementById('rope-gameover-message')
+      })
+      : null;
 
     this.bindUI();
     this.inputManager.onChange((inputs) => {
@@ -119,6 +126,7 @@ class TeamJumpRopeGame {
     this.previousPlayInputs = this.createReadyState();
     document.body.classList.remove('is-playing');
     document.getElementById('rope-countdown').classList.add('hidden');
+    this.gameOverPresenter?.hide();
     document.getElementById('rope-gameover-modal').classList.add('hidden');
     document.getElementById('rope-start-modal').classList.remove('hidden');
     document.getElementById('rope-callout').classList.add('hidden');
@@ -193,6 +201,7 @@ class TeamJumpRopeGame {
     document.body.classList.add('is-playing');
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.getElementById('rope-start-modal').classList.add('hidden');
+    this.gameOverPresenter?.hide();
     document.getElementById('rope-gameover-modal').classList.add('hidden');
     const overlay = document.getElementById('rope-countdown');
     const text = document.getElementById('rope-countdown-text');
@@ -553,15 +562,18 @@ class TeamJumpRopeGame {
     if (this.state !== 'PLAYING') return;
     this.state = 'GAMEOVER';
     this.soundEngine.stopMusic();
+    this.soundEngine.playGameOver?.();
     this.inputManager.resetAll();
     window.clearTimeout(this.calloutTimer);
     this.calloutTimer = null;
     document.getElementById('rope-callout').classList.add('hidden');
-    const message = document.getElementById('rope-gameover-message');
-    message.textContent = '게임 종료';
     document.getElementById('rope-final-score').textContent = this.score;
     document.getElementById('rope-perfect-count').textContent = this.perfectCount;
-    document.getElementById('rope-gameover-modal').classList.remove('hidden');
+    if (this.gameOverPresenter) {
+      this.gameOverPresenter.begin();
+    } else {
+      document.getElementById('rope-gameover-modal').classList.remove('hidden');
+    }
   }
 
   drawBackground() {

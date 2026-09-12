@@ -42,6 +42,10 @@ class UIController {
     this.finalResultBadge = document.getElementById('final-result-badge');
     this.finalResultTitle = document.getElementById('final-result-title');
 
+    this.gameOverPresenter = typeof GameOverPresenter === 'function'
+      ? new GameOverPresenter({ modal: this.gameOverModal, messageElement: this.finalResultTitle })
+      : null;
+
     // Action buttons
     this.startBtn = document.getElementById('start-btn');
     this.restartBtn = document.getElementById('restart-btn');
@@ -251,22 +255,23 @@ class UIController {
   }
 
   showGameOver(score, parkCount, round = 1) {
-    if (this.finalResultTitle) this.finalResultTitle.textContent = '게임 종료';
     if (this.finalScoreElement) this.finalScoreElement.textContent = score;
     if (this.finalParkCountElement) this.finalParkCountElement.textContent = parkCount;
     if (this.finalRoundElement) this.finalRoundElement.textContent = round;
-    this.gameOverModal.classList.remove('hidden');
+    if (this.gameOverPresenter) this.gameOverPresenter.begin();
+    else this.gameOverModal.classList.remove('hidden');
   }
 
   showGameClear(score, parkCount) {
-    if (this.finalResultTitle) this.finalResultTitle.textContent = '게임 종료';
     if (this.finalScoreElement) this.finalScoreElement.textContent = score;
     if (this.finalParkCountElement) this.finalParkCountElement.textContent = parkCount;
-    this.gameOverModal.classList.remove('hidden');
+    if (this.gameOverPresenter) this.gameOverPresenter.begin();
+    else this.gameOverModal.classList.remove('hidden');
   }
 
   hideGameOver() {
-    this.gameOverModal.classList.add('hidden');
+    if (this.gameOverPresenter) this.gameOverPresenter.hide();
+    else this.gameOverModal.classList.add('hidden');
   }
 }
 

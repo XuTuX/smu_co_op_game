@@ -240,6 +240,37 @@ bool serveFile(String path) {
   return true;
 }
 
+bool isPageNavigation(const String& uri) {
+  const int slash = uri.lastIndexOf('/');
+  const String tail = uri.substring(slash + 1);
+  return tail.length() == 0 || tail.indexOf('.') < 0 || tail.endsWith(".html");
+}
+
+// Every OS pings its own connectivity-check URL right after Wi-Fi connects and
+// again whenever it re-validates the link (for example after a brief drop).
+// Answering these with a redirect makes the OS treat "hihi" as a captive portal
+// and pop up its Wi-Fi sign-in window in the middle of a game.
+void sendNoContent() {
+  httpServer.send(204, "text/plain", "");
+}
+
+void sendAppleSuccess() {
+  httpServer.send(200, "text/html; charset=utf-8",
+    "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+}
+
+void sendWindowsConnectTest() {
+  httpServer.send(200, "text/plain", "Microsoft Connect Test");
+}
+
+void sendWindowsNcsi() {
+  httpServer.send(200, "text/plain", "Microsoft NCSI");
+}
+
+void sendFirefoxSuccess() {
+  httpServer.send(200, "text/plain", "success\n");
+}
+
 void startAccessPoint() {
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(AP_IP, AP_GATEWAY, AP_SUBNET);
@@ -264,19 +295,25 @@ void startHttpServer() {
     httpServer.send(200, "application/json",
       "{\"status\":\"running\",\"mode\":\"esp32-hub\",\"ip\":\"192.168.4.1\",\"webSocketPort\":81,\"udpPort\":4210}");
   });
-  httpServer.on("/generate_204", HTTP_ANY, []() { httpServer.send(204); });
-  httpServer.on("/gen_204", HTTP_ANY, []() { httpServer.send(204); });
-  httpServer.on("/hotspot-detect.html", HTTP_ANY, []() {
-    httpServer.send(200, "text/html", "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
-  });
-  httpServer.on("/connecttest.txt", HTTP_ANY, []() {
-    httpServer.send(200, "text/plain", "Microsoft Connect Test");
-  });
-  httpServer.on("/ncsi.txt", HTTP_ANY, []() {
-    httpServer.send(200, "text/plain", "Microsoft NCSI");
-  });
+  // Satisfy common connectivity checks without triggering a captive-portal UI.
+  httpServer.on("/generate_204", HTTP_ANY, sendNoContent);
+  httpServer.on("/gen_204", HTTP_ANY, sendNoContent);
+  httpServer.on("/hotspot-detect.html", HTTP_ANY, sendAppleSuccess);
+  httpServer.on("/library/test/success.html", HTTP_ANY, sendAppleSuccess);
+  httpServer.on("/connecttest.txt", HTTP_ANY, sendWindowsConnectTest);
+  httpServer.on("/ncsi.txt", HTTP_ANY, sendWindowsNcsi);
+  httpServer.on("/canonical.html", HTTP_ANY, sendFirefoxSuccess);
+  httpServer.on("/success.txt", HTTP_ANY, sendFirefoxSuccess);
+
   httpServer.onNotFound([]() {
     if (serveFile(httpServer.uri())) return;
+    // Only real page navigations are sent to the game. Unknown files and the
+    // vendor-specific probe paths of phones/PCs must answer "no content" so the
+    // OS never re-opens its Wi-Fi sign-in window during play.
+    if (!isPageNavigation(httpServer.uri())) {
+      sendNoContent();
+      return;
+    }
     httpServer.sendHeader("Location", "http://192.168.4.1/", true);
     httpServer.send(302, "text/plain", "");
   });

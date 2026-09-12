@@ -402,7 +402,6 @@ button { color: inherit; }
 .role-p2 { background: var(--yellow); }
 .role-p3 { background: var(--blue); }
 .role-p4 { background: var(--pink); }
-.role-badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 900; }
 .role-card strong { font-size: 13px; }
 .role-card.is-ready {
   transform: translateY(-3px);
