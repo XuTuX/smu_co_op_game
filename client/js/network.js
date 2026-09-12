@@ -9,6 +9,9 @@ class NetworkClient {
     this.isEsp32Connected = false;
     this.isDirectEsp32 = window.location.hostname === '192.168.4.1';
     this.selectedChannel = NetworkClient.getSelectedChannel(window.location.search);
+    // Diagnostics pages set this to true so the hub keeps sending every channel.
+    // Game pages leave it false and only receive their own channel's input.
+    this.receiveAllChannels = false;
     this.channelStates = {
       A: NetworkClient.emptyInput(),
       B: NetworkClient.emptyInput(),
@@ -105,7 +108,11 @@ class NetworkClient {
           this.systemStatus = { hub: true, controller: true, controllerId: 1 };
           this.notifyStatus();
         }
-        this.send({ type: 'register', role: 'browser', channel: this.selectedChannel });
+        this.send({
+          type: 'register',
+          role: 'browser',
+          channel: this.receiveAllChannels ? '*' : this.selectedChannel
+        });
       };
 
       this.socket.onmessage = (event) => {

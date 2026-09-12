@@ -25,6 +25,12 @@ class UIController {
     this.btnBackward = document.getElementById('btn-backward');
     this.btnLeft = document.getElementById('btn-left');
     this.btnRight = document.getElementById('btn-right');
+    // Cached once: the canvas control list is static, so re-querying the DOM
+    // on every single ESP32 input event was pure overhead during play.
+    this.canvasControls = null;
+    // Last values rendered, used to skip redundant per-frame DOM writes.
+    this.lastAttemptSeconds = null;
+    this.lastSteeringKey = null;
 
     // Modals & Overlays
     this.startModal = document.getElementById('start-modal');
@@ -110,6 +116,10 @@ class UIController {
   updateAttemptTime(seconds) {
     if (!this.attemptTimeElement) return;
     const safeSeconds = Math.max(0, Math.ceil(seconds));
+    // The loop calls this ~60 times a second; only touch the DOM when the
+    // displayed integer actually changes.
+    if (safeSeconds === this.lastAttemptSeconds) return;
+    this.lastAttemptSeconds = safeSeconds;
     this.attemptTimeElement.textContent = safeSeconds;
     this.attemptTimeElement.classList.toggle('urgent', safeSeconds <= 10);
   }
@@ -120,10 +130,15 @@ class UIController {
     const amount = Math.round(Math.abs(normalized) * 100);
     const direction = normalized < -0.02 ? 'left' : normalized > 0.02 ? 'right' : 'center';
     const labels = { left: '왼쪽', right: '오른쪽', center: '중앙' };
-    this.steeringHud.dataset.direction = direction;
-    this.steeringHud.setAttribute('aria-label', `핸들 ${labels[direction]} ${amount}%`);
-    this.steeringDirection.textContent = labels[direction];
-    this.steeringValue.textContent = `${amount}%`;
+    const steeringKey = `${amount}|${direction}`;
+    if (steeringKey !== this.lastSteeringKey) {
+      this.lastSteeringKey = steeringKey;
+      this.steeringHud.dataset.direction = direction;
+      this.steeringHud.setAttribute('aria-label', `핸들 ${labels[direction]} ${amount}%`);
+      this.steeringDirection.textContent = labels[direction];
+      this.steeringValue.textContent = `${amount}%`;
+    }
+    // The wheel itself still animates every frame so the rotation stays smooth.
     this.steeringWheel.style.transform = `rotate(${normalized * 135}deg)`;
   }
 
@@ -145,10 +160,12 @@ class UIController {
     if (this.btnLeft) this.btnLeft.classList.toggle('active', inputs.left);
     if (this.btnRight) this.btnRight.classList.toggle('active', inputs.right);
 
-    document.querySelectorAll('.canvas-control[data-action]').forEach((button) => {
+    if (this.canvasControls === null) {
+      this.canvasControls = Array.from(document.querySelectorAll('.canvas-control[data-action]'));
+    }
+    for (const button of this.canvasControls) {
       button.classList.toggle('active', Boolean(inputs[button.dataset.action]));
-    });
-
+    }
   }
 
   showStartScreen() {

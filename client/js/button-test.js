@@ -10,6 +10,8 @@ class TwelveButtonTest {
       setEsp32Input: () => {}
     };
     this.network = new NetworkClient(receiver, (_connected, status) => this.handleStatus(status));
+    // This page monitors all three channels at once, so ask the hub not to filter.
+    this.network.receiveAllChannels = true;
     this.renderSelectedChannel();
     this.network.connect();
   }

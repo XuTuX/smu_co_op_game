@@ -48,6 +48,12 @@ class Game {
     this.particles = [];
     this.skidMarks = [];
 
+    // Canvas dataset fields are diagnostics only. Writing a dozen of them (with
+    // toFixed string allocation) every frame was needless layout/style churn,
+    // so refresh them a few times per second instead.
+    this.telemetryIntervalMs = 200;
+    this.lastTelemetryAt = -Infinity;
+
     this.init();
   }
 
@@ -528,19 +534,24 @@ class Game {
     this.ctx.restore();
 
     // Lightweight runtime telemetry for browser smoke tests and diagnostics.
-    this.canvas.dataset.gameState = this.state;
-    this.canvas.dataset.busX = this.bus.x.toFixed(2);
-    this.canvas.dataset.busY = this.bus.y.toFixed(2);
-    this.canvas.dataset.busAngle = this.bus.angle.toFixed(4);
-    this.canvas.dataset.busSpeed = this.bus.speed.toFixed(3);
-    const steeringPercent = Math.round((this.bus.steeringAngle / CONFIG.BUS.MAX_STEER_ANGLE) * 100);
-    this.canvas.dataset.steeringAngle = this.bus.steeringAngle.toFixed(4);
-    this.canvas.dataset.steeringPercent = String(steeringPercent);
-    this.canvas.dataset.round = String(this.round);
-    this.canvas.dataset.lives = String(this.lives);
-    this.canvas.dataset.obstacles = String(this.map.obstacles.length);
-    this.canvas.dataset.attemptTime = String(Math.max(0, Math.ceil(this.attemptTimeRemaining)));
-    this.canvas.dataset.hasParkingPass = String(this.hasParkingPass);
+    // Throttled: diagnostics do not need 60 samples a second.
+    const telemetryNow = performance.now();
+    if (telemetryNow - this.lastTelemetryAt >= this.telemetryIntervalMs) {
+      this.lastTelemetryAt = telemetryNow;
+      this.canvas.dataset.gameState = this.state;
+      this.canvas.dataset.busX = this.bus.x.toFixed(2);
+      this.canvas.dataset.busY = this.bus.y.toFixed(2);
+      this.canvas.dataset.busAngle = this.bus.angle.toFixed(4);
+      this.canvas.dataset.busSpeed = this.bus.speed.toFixed(3);
+      const steeringPercent = Math.round((this.bus.steeringAngle / CONFIG.BUS.MAX_STEER_ANGLE) * 100);
+      this.canvas.dataset.steeringAngle = this.bus.steeringAngle.toFixed(4);
+      this.canvas.dataset.steeringPercent = String(steeringPercent);
+      this.canvas.dataset.round = String(this.round);
+      this.canvas.dataset.lives = String(this.lives);
+      this.canvas.dataset.obstacles = String(this.map.obstacles.length);
+      this.canvas.dataset.attemptTime = String(Math.max(0, Math.ceil(this.attemptTimeRemaining)));
+      this.canvas.dataset.hasParkingPass = String(this.hasParkingPass);
+    }
 
     // Continue loop
     requestAnimationFrame((t) => this.loop(t));

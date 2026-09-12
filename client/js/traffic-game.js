@@ -61,6 +61,13 @@ class ObstacleDodgeGame {
     this.level = 1;
     this.lastTime = 0;
     this.toastTimer = null;
+    // Cached DOM handles / throttle state so the 60fps loop stops re-querying
+    // the DOM and re-writing unchanged HUD values every frame.
+    this.canvasControls = null;
+    this.hudElements = null;
+    this.lastHud = {};
+    this.telemetryIntervalMs = 200;
+    this.lastTelemetryAt = -Infinity;
     this.readyActions = ['forward', 'backward', 'left', 'right'];
     this.readyPlayers = this.createReadyState();
     this.previousReadyInputs = this.createReadyState();
@@ -221,9 +228,12 @@ class ObstacleDodgeGame {
   }
 
   updateInputUI(inputs) {
-    document.querySelectorAll('.canvas-control[data-action]').forEach((button) => {
+    if (this.canvasControls === null) {
+      this.canvasControls = Array.from(document.querySelectorAll('.canvas-control[data-action]'));
+    }
+    for (const button of this.canvasControls) {
       button.classList.toggle('active', Boolean(inputs[button.dataset.action]));
-    });
+    }
   }
 
   resetGame() {
@@ -850,12 +860,29 @@ class ObstacleDodgeGame {
   }
 
   updateHUD() {
-    document.getElementById('traffic-score').textContent = this.score;
-    document.getElementById('traffic-time').textContent = Math.max(0, Math.ceil(this.timeRemaining));
-    const hearts = '♥'.repeat(this.lives) + '♡'.repeat(Math.max(0, 3 - this.lives));
-    const lives = document.getElementById('traffic-lives');
-    lives.textContent = hearts;
-    lives.setAttribute('aria-label', `남은 목숨 ${this.lives}개`);
+    if (this.hudElements === null) {
+      this.hudElements = {
+        score: document.getElementById('traffic-score'),
+        time: document.getElementById('traffic-time'),
+        lives: document.getElementById('traffic-lives')
+      };
+    }
+    const { score, time, lives } = this.hudElements;
+    const safeTime = Math.max(0, Math.ceil(this.timeRemaining));
+    if (score && this.lastHud.score !== this.score) {
+      this.lastHud.score = this.score;
+      score.textContent = this.score;
+    }
+    if (time && this.lastHud.time !== safeTime) {
+      this.lastHud.time = safeTime;
+      time.textContent = safeTime;
+    }
+    if (lives && this.lastHud.lives !== this.lives) {
+      this.lastHud.lives = this.lives;
+      const hearts = '♥'.repeat(this.lives) + '♡'.repeat(Math.max(0, 3 - this.lives));
+      lives.textContent = hearts;
+      lives.setAttribute('aria-label', `남은 목숨 ${this.lives}개`);
+    }
   }
 
   drawArena() {
@@ -1241,6 +1268,12 @@ class ObstacleDodgeGame {
     this.drawCollectibles();
     this.drawHeart();
     this.drawPlayer();
+    // Dataset fields are diagnostics only. The block below allocates strings
+    // and walks every hazard several times, so refresh it a few times a second
+    // instead of 60 times a second.
+    const telemetryNow = performance.now();
+    if (telemetryNow - this.lastTelemetryAt < this.telemetryIntervalMs) return;
+    this.lastTelemetryAt = telemetryNow;
     this.canvas.dataset.gameState = this.state;
     this.canvas.dataset.playerX = this.player.x.toFixed(2);
     this.canvas.dataset.playerY = this.player.y.toFixed(2);

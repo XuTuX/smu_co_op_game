@@ -65,6 +65,13 @@ class TeamJumpRopeGame {
     this.countdownHideTimer = null;
     this.calloutTimer = null;
     this.failPulse = 0;
+    // Cached DOM handles / throttle state so the 60fps loop stops re-querying
+    // the DOM and re-writing unchanged HUD values every frame.
+    this.canvasControls = null;
+    this.hudElements = null;
+    this.lastHud = {};
+    this.telemetryIntervalMs = 200;
+    this.lastTelemetryAt = -Infinity;
 
     this.gameOverPresenter = typeof GameOverPresenter === 'function'
       ? new GameOverPresenter({
@@ -265,9 +272,12 @@ class TeamJumpRopeGame {
   }
 
   updateInputUI(inputs) {
-    document.querySelectorAll('.rope-player-button[data-action]').forEach((button) => {
+    if (this.canvasControls === null) {
+      this.canvasControls = Array.from(document.querySelectorAll('.rope-player-button[data-action]'));
+    }
+    for (const button of this.canvasControls) {
       button.classList.toggle('active', Boolean(inputs[button.dataset.action]));
-    });
+    }
   }
 
   handleJumpInput(inputs) {
@@ -549,10 +559,19 @@ class TeamJumpRopeGame {
   }
 
   updateHUD() {
-    const score = document.getElementById('rope-score');
-    const time = document.getElementById('rope-time');
-    if (score) score.textContent = this.score;
-    if (time) {
+    if (this.hudElements === null) {
+      this.hudElements = {
+        score: document.getElementById('rope-score'),
+        time: document.getElementById('rope-time')
+      };
+    }
+    const { score, time } = this.hudElements;
+    if (score && this.lastHud.score !== this.score) {
+      this.lastHud.score = this.score;
+      score.textContent = this.score;
+    }
+    if (time && this.lastHud.lives !== this.sharedLives) {
+      this.lastHud.lives = this.sharedLives;
       time.textContent = this.sharedLives > 0 ? '♥'.repeat(this.sharedLives) : '0';
       time.classList.toggle('urgent', this.sharedLives === 1);
     }
@@ -749,6 +768,12 @@ class TeamJumpRopeGame {
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     ctx.restore();
+    // Dataset fields are diagnostics only and getRopeGeometry()/getRopeOffsets()
+    // allocate fresh objects/arrays, so refresh them a few times a second
+    // instead of on every animation frame.
+    const telemetryNow = performance.now();
+    if (telemetryNow - this.lastTelemetryAt < this.telemetryIntervalMs) return;
+    this.lastTelemetryAt = telemetryNow;
     this.canvas.dataset.gameState = this.state;
     this.canvas.dataset.score = String(this.score);
     this.canvas.dataset.perfect = String(this.perfectCount);

@@ -11,9 +11,22 @@ const IPAddress HUB_IP(192, 168, 4, 1);
 constexpr uint16_t UDP_PORT = 4210;
 
 constexpr size_t BUTTON_COUNT = 12;
+// Leading-edge debounce: the first raw transition is reported instantly and
+// the pin is then muted for DEBOUNCE_MS. The previous trailing-edge logic
+// waited the whole window before reporting, which added ~35ms to every press
+// and could swallow very fast taps entirely.
 constexpr unsigned long DEBOUNCE_MS = 35;
-constexpr unsigned long SNAPSHOT_INTERVAL_MS = 500;
+// Full-state resync only needs to beat the hub's 3s controller timeout, so
+// halving this from 500ms keeps correctness while cutting periodic UDP load.
+constexpr unsigned long SNAPSHOT_INTERVAL_MS = 1000;
 constexpr unsigned long WIFI_RETRY_MS = 1000;
+
+// Serial.printf() at 115200 baud blocks the CPU for several milliseconds per
+// line. Snapshot bursts plus a pressed/released pair could print dozens of
+// lines per second and stutter the loop, so keep per-event chatter off during
+// play. Startup/connection messages below are always printed.
+constexpr bool VERBOSE_LOG = false;
+#define LOGF(...) do { if (VERBOSE_LOG) Serial.printf(__VA_ARGS__); } while (0)
 
 // ESP32-S3 DevKitM-1 defaults. Each button connects its GPIO to GND.
 constexpr uint8_t BUTTON_PINS[BUTTON_COUNT] = {
@@ -25,7 +38,7 @@ constexpr uint8_t BUTTON_PINS[BUTTON_COUNT] = {
 struct ButtonState {
   bool pressed;
   int lastRaw;
-  unsigned long lastRawChangeAt;
+  unsigned long lastAcceptedAt;
 };
 
 ButtonState buttons[BUTTON_COUNT] = {};
@@ -60,7 +73,7 @@ bool sendButtonPacket(size_t physicalIndex) {
   const bool sent = udp.endPacket() == 1;
 
   if (sent) {
-    Serial.printf("[UDP] %c-%u %s seq=%lu\n",
+    LOGF("[UDP] %c-%u %s seq=%lu\n",
       channelName(physicalIndex), button,
       buttons[physicalIndex].pressed ? "DOWN" : "UP",
       static_cast<unsigned long>(packetSequence));
@@ -104,18 +117,23 @@ void scanButtons() {
   const unsigned long now = millis();
 
   for (size_t i = 0; i < BUTTON_COUNT; ++i) {
+    ButtonState& button = buttons[i];
     const int raw = digitalRead(BUTTON_PINS[i]);
-    if (raw != buttons[i].lastRaw) {
-      buttons[i].lastRaw = raw;
-      buttons[i].lastRawChangeAt = now;
+    if (raw != button.lastRaw) {
+      button.lastRaw = raw;
     }
 
-    if (now - buttons[i].lastRawChangeAt < DEBOUNCE_MS) continue;
-    const bool pressed = raw == LOW;
-    if (pressed == buttons[i].pressed) continue;
+    // Mute a pin that we just acted on so contact bounce cannot emit extra
+    // events. Once the window passes we re-read the settled level, which also
+    // recovers the state if a noise spike was accepted and then reverted.
+    if (now - button.lastAcceptedAt < DEBOUNCE_MS) continue;
 
-    buttons[i].pressed = pressed;
-    Serial.printf("[BUTTON] %c-%u %s (GPIO %u)\n",
+    const bool pressed = raw == LOW;
+    if (pressed == button.pressed) continue;
+
+    button.pressed = pressed;
+    button.lastAcceptedAt = now;
+    LOGF("[BUTTON] %c-%u %s (GPIO %u)\n",
       channelName(i), static_cast<unsigned>((i % 4) + 1),
       pressed ? "DOWN" : "UP", BUTTON_PINS[i]);
     sendButtonPacket(i);
@@ -133,13 +151,16 @@ void setup() {
     pinMode(BUTTON_PINS[i], INPUT_PULLUP);
     buttons[i].lastRaw = digitalRead(BUTTON_PINS[i]);
     buttons[i].pressed = buttons[i].lastRaw == LOW;
-    buttons[i].lastRawChangeAt = millis();
+    buttons[i].lastAcceptedAt = millis();
     Serial.printf("  %c-%u -> GPIO %u\n", channelName(i),
       static_cast<unsigned>((i % 4) + 1), BUTTON_PINS[i]);
   }
 
   sequence = esp_random();
   WiFi.mode(WIFI_STA);
+  // Modem sleep injects tens of milliseconds of latency into every outbound
+  // UDP packet. Disable it so button presses leave the radio immediately.
+  WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
   WiFi.persistent(false);
   WiFi.begin(AP_SSID, AP_PASSWORD);
