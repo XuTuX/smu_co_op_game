@@ -4,21 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#c6f36b">
-  <title>버튼 연습</title>
-  <link rel="stylesheet" href="style.css?v=20260828-4">
-  <link rel="stylesheet" href="button-test.css?v=20260828-4">
+  <title>3채널 버튼 테스트</title>
+  <link rel="stylesheet" href="style.css?v=20260912-1">
+  <link rel="stylesheet" href="button-test.css?v=20260912-1">
 </head>
 <body class="button-test-page">
   <div class="page-shell">
     <header class="site-header">
       <div class="brand-lockup" aria-label="Bus Co-op Club">
-        <div class="brand-mark test-brand" aria-hidden="true">4</div>
-        <h1>버튼 연습</h1>
+        <div class="brand-mark test-brand" aria-hidden="true">12</div>
+        <div><h1>3채널 버튼 테스트</h1><p class="test-subtitle">ESP32 B의 12개 물리 버튼을 한눈에 확인합니다.</p></div>
       </div>
-
-      <div id="test-hardware-badge" class="status-badge disconnected" aria-live="polite">
-        <span class="status-dot"></span>
-        <span id="test-hardware-text">연결 대기</span>
+      <div class="status-cluster" aria-live="polite">
+        <div id="hub-status" class="status-badge disconnected"><span class="status-dot"></span><span>Hub 대기</span></div>
+        <div id="controller-status" class="status-badge disconnected"><span class="status-dot"></span><span>Controller 대기</span></div>
       </div>
     </header>
 
@@ -27,51 +26,55 @@
       <a class="mode-link" href="traffic.html"><span>02</span> 장애물 피하기</a>
       <a class="mode-link" href="jump-rope.html"><span>03</span> 단체 줄넘기</a>
       <a class="mode-link" href="beat-jump.html"><span>04</span> 타이밍 점프</a>
-      <a class="mode-link active test-active" href="button-test.html"><span>05</span> 버튼 4개 연습</a>
+      <a class="mode-link active test-active" href="button-test.html"><span>05</span> 버튼 12개 테스트</a>
     </nav>
 
     <main class="game-card button-test-card">
-      <section id="connection-panel" class="connection-panel waiting" aria-live="polite">
-        <strong id="connection-title">ESP32 연결 대기</strong>
+      <section class="test-toolbar" aria-label="테스트 상태">
+        <div><span>현재 게임 채널</span><strong id="selected-channel">A</strong></div>
+        <div class="channel-shortcuts" aria-label="테스트할 게임 채널 선택">
+          <a href="button-test.html?channel=A" data-channel-link="A">A</a>
+          <a href="button-test.html?channel=B" data-channel-link="B">B</a>
+          <a href="button-test.html?channel=C" data-channel-link="C">C</a>
+        </div>
+        <div class="last-event"><span>마지막 이벤트</span><strong id="last-event">입력 대기</strong></div>
       </section>
 
-      <section class="button-grid" aria-label="ESP32 버튼 4개 실시간 상태">
-        <article class="gpio-button-card p1" data-input-action="forward">
-          <header><span class="player-chip">P1</span><span class="gpio-chip">W</span></header>
-          <div class="mini-button" aria-hidden="true"><span></span></div>
-          <strong class="action-name">전진 / 위</strong>
-          <span class="button-state">대기</span>
-          <div class="card-count"><span>횟수</span><b data-press-count="forward">0</b></div>
-        </article>
+      <div id="channel-board" class="channel-board">
+        <section class="channel-panel" data-channel-panel="A">
+          <header><span>CHANNEL A</span><small>물리 버튼 1–4</small></header>
+          <div class="button-grid">
+            <article class="gpio-button-card p1" data-channel="A" data-action="forward"><span class="button-number">1</span><strong>전진 / 위</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p2" data-channel="A" data-action="backward"><span class="button-number">2</span><strong>후진 / 아래</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p3" data-channel="A" data-action="left"><span class="button-number">3</span><strong>왼쪽</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p4" data-channel="A" data-action="right"><span class="button-number">4</span><strong>오른쪽</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+          </div>
+        </section>
 
-        <article class="gpio-button-card p2" data-input-action="backward">
-          <header><span class="player-chip">P2</span><span class="gpio-chip">S</span></header>
-          <div class="mini-button" aria-hidden="true"><span></span></div>
-          <strong class="action-name">후진 / 아래</strong>
-          <span class="button-state">대기</span>
-          <div class="card-count"><span>횟수</span><b data-press-count="backward">0</b></div>
-        </article>
+        <section class="channel-panel" data-channel-panel="B">
+          <header><span>CHANNEL B</span><small>물리 버튼 5–8</small></header>
+          <div class="button-grid">
+            <article class="gpio-button-card p1" data-channel="B" data-action="forward"><span class="button-number">1</span><strong>전진 / 위</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p2" data-channel="B" data-action="backward"><span class="button-number">2</span><strong>후진 / 아래</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p3" data-channel="B" data-action="left"><span class="button-number">3</span><strong>왼쪽</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p4" data-channel="B" data-action="right"><span class="button-number">4</span><strong>오른쪽</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+          </div>
+        </section>
 
-        <article class="gpio-button-card p3" data-input-action="left">
-          <header><span class="player-chip">P3</span><span class="gpio-chip">A</span></header>
-          <div class="mini-button" aria-hidden="true"><span></span></div>
-          <strong class="action-name">왼쪽</strong>
-          <span class="button-state">대기</span>
-          <div class="card-count"><span>횟수</span><b data-press-count="left">0</b></div>
-        </article>
-
-        <article class="gpio-button-card p4" data-input-action="right">
-          <header><span class="player-chip">P4</span><span class="gpio-chip">D</span></header>
-          <div class="mini-button" aria-hidden="true"><span></span></div>
-          <strong class="action-name">오른쪽</strong>
-          <span class="button-state">대기</span>
-          <div class="card-count"><span>횟수</span><b data-press-count="right">0</b></div>
-        </article>
-      </section>
+        <section class="channel-panel" data-channel-panel="C">
+          <header><span>CHANNEL C</span><small>물리 버튼 9–12</small></header>
+          <div class="button-grid">
+            <article class="gpio-button-card p1" data-channel="C" data-action="forward"><span class="button-number">1</span><strong>전진 / 위</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p2" data-channel="C" data-action="backward"><span class="button-number">2</span><strong>후진 / 아래</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p3" data-channel="C" data-action="left"><span class="button-number">3</span><strong>왼쪽</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+            <article class="gpio-button-card p4" data-channel="C" data-action="right"><span class="button-number">4</span><strong>오른쪽</strong><span class="button-state">UP</span><small>횟수 <b data-count>0</b></small></article>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
 
-  <script src="js/network.js?v=20260828-4"></script>
-  <script src="js/button-test.js?v=20260828-4"></script>
+  <script src="js/network.js?v=20260912-1"></script>
+  <script src="js/button-test.js?v=20260912-1"></script>
 </body>
 </html>

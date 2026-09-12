@@ -106,10 +106,10 @@ async function runTest() {
       response.on('end', () => resolve({ statusCode: response.statusCode, body }));
     }).on('error', reject);
   });
-  if (buttonTestHtml.statusCode !== 200 || !buttonTestHtml.body.includes('ESP32 버튼 4개 실시간 상태')) {
-    throw new Error(`Expected four-button test page, got HTTP ${buttonTestHtml.statusCode}`);
+  if (buttonTestHtml.statusCode !== 200 || !buttonTestHtml.body.includes('3채널 버튼 테스트')) {
+    throw new Error(`Expected 12-button channel test page, got HTTP ${buttonTestHtml.statusCode}`);
   }
-  console.log('✅ TEST PASSED: standalone four-button test page is served');
+  console.log('✅ TEST PASSED: standalone 12-button channel test page is served');
 
   const jumpRopeHtml = await new Promise((resolve, reject) => {
     http.get(`http://localhost:${TEST_PORT}/jump-rope.html`, (response) => {

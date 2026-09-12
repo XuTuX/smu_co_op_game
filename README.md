@@ -1,6 +1,6 @@
 # 🚌 Bus Co-op Club — ESP32 자체 Wi-Fi 4인 협동 버스 게임
 
-ESP32 마이크로컨트롤러에 연결된 4개의 물리 버튼을 이용해 4명의 플레이어가 각각 **전진 / 후진·브레이크 / 좌회전 / 우회전**을 나누어 맡는 실시간 4인 협동 아케이드 게임입니다.
+ESP32 마이크로컨트롤러와 물리 버튼을 이용해 4명의 플레이어가 각각 **전진 / 후진·브레이크 / 좌회전 / 우회전**을 나누어 맡는 실시간 협동 아케이드 게임입니다. 기존 ESP32 한 대·4버튼 모드와 ESP32-S3 두 대·3채널 12버튼 모드를 모두 지원합니다.
 
 현재 네 가지 게임과 버튼 연습 화면을 제공합니다.
 
@@ -8,9 +8,9 @@ ESP32 마이크로컨트롤러에 연결된 4개의 물리 버튼을 이용해 4
 - **02 장애물 피하기:** 방향별 애니메이션 캐릭터로 이동 박스·레이저를 피하고 별과 생명 하트를 획득
 - **03 단체 줄넘기:** 네 캐릭터가 하나의 줄 안에서 각자 자기 버튼으로 점프
 - **04 타이밍 점프:** 좌우 방향을 확인하고 한 번에 하나씩 오는 장애물을 각자 점프로 통과
-- **05 버튼 4개 연습:** GPIO 입력과 동시 누름 상태를 게임 전에 확인
+- **05 버튼 테스트:** A/B/C 3채널의 12개 GPIO 입력과 동시 누름 상태 확인
 
-> ESP32-S3가 `hihi` Wi-Fi와 웹서버를 직접 제공합니다. `hihi`에 연결한 뒤 `http://192.168.4.1`을 열면 Node.js 없이 게임과 GPIO 4·5·6·7 버튼 테스트 페이지를 사용할 수 있습니다. 개발 중에는 기존 Node.js 서버로 PC 테스트도 가능합니다.
+> 운영 권장 구성에서는 ESP32 A가 `hihi` Wi-Fi와 웹서버를 제공하고, ESP32 B가 12개 버튼을 읽어 UDP로 A에 전달합니다. `http://192.168.4.1`에서 Node.js 없이 실행할 수 있으며 기존 단일 ESP32와 PC용 Node.js 흐름도 유지됩니다.
 
 ---
 
@@ -30,7 +30,7 @@ parking-lot/
 │   ├── traffic.html              # 전체 화면형 장애물 피하기 게임 화면
 │   ├── jump-rope.html            # 4인 단체 줄넘기 게임 화면
 │   ├── beat-jump.html            # 좌우 진입형 4인 타이밍 점프 화면
-│   ├── button-test.html          # GPIO 4·5·6·7 버튼 상태·동시 입력 확인 페이지
+│   ├── button-test.html          # A/B/C 12버튼 상태·동시 입력 확인 페이지
 │   ├── style.css                 # 반응형 사이버 아케이드 디자인
 │   ├── traffic.css               # 장애물 피하기 전용 스타일
 │   ├── jump-rope.css             # 단체 줄넘기 전용 스타일
@@ -55,13 +55,77 @@ parking-lot/
 │   └── esp32_bus_controller.ino  # 아두이노 IDE용 스케치 파일
 ├── platformio.ini                 # PlatformIO 프로젝트 설정 및 라이브러리
 ├── src/
-│   └── main.cpp                  # PlatformIO용 C++ 펌웨어 소스
+│   ├── main.cpp                  # 기존 단일 ESP32·4버튼 펌웨어
+│   ├── hub/main.cpp              # ESP32 A: AP·HTTP·WebSocket·UDP 허브
+│   ├── controller/main.cpp       # ESP32 B: 12버튼·UDP 컨트롤러
+│   └── shared/button_protocol.h  # 공용 9바이트 UDP 규약
 └── README.md                     # 프로젝트 종합 설명서
 ```
 
 ---
 
-## 2. 하드웨어 배선 가이드 (Wiring)
+## 2. ESP32-S3 두 대·3채널 구성
+
+```text
+버튼 12개 → ESP32 B (Controller) ── UDP 4210 ──▶ ESP32 A (Hub)
+                                                    │
+                                       HTTP 80 / WebSocket 81
+                                                    │
+                          ┌─────────────────────────┼─────────────────────────┐
+                    게임 화면 A                게임 화면 B                게임 화면 C
+```
+
+- ESP32 A: `hihi` / `12345678` AP, `192.168.4.1`, LittleFS 웹서버, WebSocket 브로드캐스트
+- ESP32 B: A의 AP에 자동 연결, 35ms 디바운싱, 이벤트 즉시 전송, 500ms 전체 상태 재동기화
+- Controller 패킷이 3초간 없으면 A가 Controller를 오프라인으로 표시하고 12개 입력을 모두 해제합니다.
+
+### ESP32 B 12버튼 배선표
+
+모든 버튼은 외부 저항 없이 `GPIO ─ 버튼 ─ GND`로 연결합니다.
+
+| 물리 버튼 | 기본 GPIO | 채널 | 게임 입력 |
+| :---: | :---: | :---: | :--- |
+| 1 | 4 | A | 1 / 전진·위 |
+| 2 | 5 | A | 2 / 후진·아래 |
+| 3 | 6 | A | 3 / 왼쪽 |
+| 4 | 7 | A | 4 / 오른쪽 |
+| 5 | 8 | B | 1 / 전진·위 |
+| 6 | 9 | B | 2 / 후진·아래 |
+| 7 | 10 | B | 3 / 왼쪽 |
+| 8 | 11 | B | 4 / 오른쪽 |
+| 9 | 12 | C | 1 / 전진·위 |
+| 10 | 13 | C | 2 / 후진·아래 |
+| 11 | 14 | C | 3 / 왼쪽 |
+| 12 | 15 | C | 4 / 오른쪽 |
+
+핀 배열은 `src/controller/main.cpp` 상단의 `BUTTON_PINS`에서 변경할 수 있습니다.
+
+### UDP 및 브라우저 메시지
+
+ESP32 B는 구조체 메모리를 직접 전송하지 않고 `version, controllerId, channel, button, state, sequence` 순서의 고정 9바이트 패킷을 사용합니다. 32비트 sequence는 network byte order(big-endian)입니다.
+
+브라우저에는 채널 전체 상태가 다음 형태로 전달됩니다.
+
+```json
+{
+  "type": "input",
+  "controller": 1,
+  "channel": "B",
+  "seq": 152,
+  "data": {
+    "forward": false,
+    "backward": true,
+    "left": false,
+    "right": false
+  }
+}
+```
+
+기존 채널 없는 `type: "input"` 메시지는 Channel A로 처리합니다.
+
+---
+
+## 3. 기존 단일 ESP32 배선 가이드
 
 ESP32 내부의 `INPUT_PULLUP`을 사용하므로 **별도의 외부 저항 없이** 버튼의 한쪽 다리를 GPIO에, 반대쪽 다리를 GND에 바로 연결합니다.
 
@@ -88,26 +152,41 @@ ESP32 내부의 `INPUT_PULLUP`을 사용하므로 **별도의 외부 저항 없�
 
 ---
 
-## 3. 빠른 시작 (ESP32 직접 실행)
+## 4. 빠른 시작
 
-### 1) 펌웨어와 웹 파일 업로드
+### 권장: ESP32-S3 두 대 운영
+
+먼저 ESP32 A를 연결해 Hub 펌웨어와 웹 파일을 업로드합니다.
 
 ```bash
-cd "/Users/dd/Documents/PlatformIO/Projects/parking lot"
+pio run -e esp32-s3-hub -t upload
+pio run -e esp32-s3-hub -t uploadfs
+```
+
+그다음 ESP32 B만 연결해 Controller 펌웨어를 업로드합니다. Controller에는 LittleFS 업로드가 필요 없습니다.
+
+```bash
+pio run -e esp32-s3-controller -t upload
+```
+
+기존 단일 ESP32·4버튼 모드는 아래 명령을 그대로 사용합니다.
+
+```bash
 pio run -e esp32-s3-devkitm-1 -t upload
 pio run -e esp32-s3-devkitm-1 -t uploadfs
 ```
 
-### 2) ESP32 Wi-Fi 및 웹페이지 접속
+### Wi-Fi 및 채널별 화면 접속
 
 - Wi-Fi 이름 `hihi`, 비밀번호 `12345678`로 연결합니다.
-- 버튼 4개 테스트: `http://192.168.4.1`
-- 버스 주차: `http://192.168.4.1/index.html`
-- 장애물 피하기: `http://192.168.4.1/traffic.html`
-- 단체 줄넘기: `http://192.168.4.1/jump-rope.html`
-- 타이밍 점프: `http://192.168.4.1/beat-jump.html`
+- 12버튼 전체 테스트: `http://192.168.4.1/`
+- 화면 1 예시: `http://192.168.4.1/index.html?channel=A`
+- 화면 2 예시: `http://192.168.4.1/traffic.html?channel=B`
+- 화면 3 예시: `http://192.168.4.1/jump-rope.html?channel=C`
 
-### 3) ESP32 없이 PC 개발 테스트(선택 사항)
+네 게임 중 어느 게임이든 `?channel=A`, `?channel=B`, `?channel=C`를 붙일 수 있습니다. 게임 간 메뉴 이동 시 선택 채널은 유지되며, 쿼리가 없거나 잘못되면 A를 사용합니다.
+
+### ESP32 없이 PC 개발 테스트(선택 사항)
 
 - `server` 폴더에서 `npm install`, `npm start`를 실행하고 `http://localhost:3000/jump-rope.html`을 엽니다.
 - 키보드의 `WASD` 또는 방향키를 꾹 누릅니다.
@@ -290,8 +369,10 @@ npm test
 1. 버스 이동 물리
 2. 주차 단계별 판정 난이도
 3. 점수 기반 장애물 속도·생성 간격, 500점 레이저 2개, 빠른 별, 생명 하트
-4. HTTP 정적 파일 제공 및 브라우저·ESP32 WebSocket 중계
-5. ESP32 WebSocket 호환 입력·연결 상태 중계
+4. A/B/C 브라우저 입력 격리, 기존 A채널 호환, 채널 URL 유지
+5. UDP 9바이트 검증, big-endian sequence, 누락·랩어라운드, 3초 타임아웃
+6. HTTP 정적 파일 제공 및 브라우저·ESP32 WebSocket 중계
+7. Channel/controller/sequence와 Hub·Controller 상태 중계
 
 ---
 
@@ -309,7 +390,13 @@ npm test
 
 - 버튼이 `GPIO PIN`과 `GND` 사이에 연결되어 있는지 확인하세요.
 - 브레드보드나 점퍼선의 접촉 불량을 확인하세요.
+- 두 보드 모드에서는 다음 순서로 원인을 좁히세요.
+  1. ESP32 B 시리얼에서 `[BUTTON] A-1 DOWN`과 `[UDP]` 로그 확인
+  2. ESP32 A 시리얼에서 `[UDP] A-1 DOWN` 로그 확인
+  3. `http://192.168.4.1/button-test.html`에서 Hub/Controller ONLINE과 12버튼 상태 확인
+  4. 실제 게임 URL의 `?channel=A|B|C`가 배선 채널과 일치하는지 확인
 
 ### Q3. 페이지는 열리지만 스타일이나 이미지가 나오지 않습니다.
 
-- LittleFS 웹 파일을 `pio run -e esp32-s3-devkitm-1 -t uploadfs`로 다시 업로드하세요.
+- 두 보드 모드에서는 `pio run -e esp32-s3-hub -t uploadfs`로 Hub의 LittleFS를 다시 업로드하세요.
+- 기존 단일 보드 모드에서는 `pio run -e esp32-s3-devkitm-1 -t uploadfs`를 사용하세요.

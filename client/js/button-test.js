@@ -1,17 +1,16 @@
-class FourButtonTest {
+class TwelveButtonTest {
   constructor() {
     this.actions = ['forward', 'backward', 'left', 'right'];
-    this.state = this.emptyState();
-    this.hasReceivedInput = false;
-    this.pressCounts = this.emptyCount();
-    this.hardwareBadge = document.getElementById('test-hardware-badge');
-    this.hardwareText = document.getElementById('test-hardware-text');
-    this.connectionPanel = document.getElementById('connection-panel');
-    this.connectionTitle = document.getElementById('connection-title');
+    this.states = { A: this.emptyState(), B: this.emptyState(), C: this.emptyState() };
+    this.received = { A: false, B: false, C: false };
+    this.counts = { A: this.emptyCounts(), B: this.emptyCounts(), C: this.emptyCounts() };
 
-    const inputReceiver = { setEsp32Input: (data) => this.handleInput(data) };
-    this.network = new NetworkClient(inputReceiver, (connected) => this.handleConnection(connected));
-
+    const receiver = {
+      setChannelInput: (channel, data, message) => this.handleChannelInput(channel, data, message),
+      setEsp32Input: () => {}
+    };
+    this.network = new NetworkClient(receiver, (_connected, status) => this.handleStatus(status));
+    this.renderSelectedChannel();
     this.network.connect();
   }
 
@@ -19,52 +18,70 @@ class FourButtonTest {
     return { forward: false, backward: false, left: false, right: false };
   }
 
-  emptyCount() {
+  emptyCounts() {
     return { forward: 0, backward: 0, left: 0, right: 0 };
   }
 
-  handleConnection(connected) {
-    this.hardwareBadge.classList.toggle('connected', connected);
-    this.hardwareBadge.classList.toggle('disconnected', !connected);
-    this.hardwareText.textContent = connected ? 'ESP32' : '연결 대기';
-    this.connectionPanel.classList.toggle('connected', connected);
-    this.connectionPanel.classList.toggle('waiting', !connected);
-    this.connectionTitle.textContent = connected ? '버튼을 눌러보세요' : 'ESP32 연결 대기';
-
-    if (!connected) {
-      this.hasReceivedInput = false;
-      this.state = this.emptyState();
-      this.renderCards();
+  handleStatus(status = {}) {
+    this.updateStatusBadge('hub-status', Boolean(status.hub), 'Hub');
+    this.updateStatusBadge('controller-status', Boolean(status.controller), 'Controller');
+    if (!status.controller) {
+      document.getElementById('last-event').textContent = status.hub ? 'Controller 연결 대기' : 'Hub 연결 대기';
     }
   }
 
-  handleInput(data) {
-    const nextState = this.emptyState();
-    for (const action of this.actions) nextState[action] = Boolean(data && data[action]);
+  updateStatusBadge(id, connected, label) {
+    const badge = document.getElementById(id);
+    badge.classList.toggle('connected', connected);
+    badge.classList.toggle('disconnected', !connected);
+    badge.querySelector('span:last-child').textContent = `${label} ${connected ? 'ONLINE' : 'OFFLINE'}`;
+  }
 
-    const changedActions = this.actions.filter((action) =>
-      !this.hasReceivedInput || nextState[action] !== this.state[action]
+  handleChannelInput(channel, data, message) {
+    if (!['A', 'B', 'C'].includes(channel)) return;
+    const next = this.emptyState();
+    for (const action of this.actions) next[action] = Boolean(data && data[action]);
+
+    const changed = this.actions.filter((action) =>
+      this.received[channel] && next[action] !== this.states[channel][action]
     );
-
-    for (const action of changedActions) {
-      if (nextState[action]) {
-        this.pressCounts[action] += 1;
-        document.querySelector(`[data-press-count="${action}"]`).textContent = String(this.pressCounts[action]);
-      }
+    for (const action of changed) {
+      if (next[action]) this.counts[channel][action] += 1;
     }
-    this.hasReceivedInput = true;
-    this.state = nextState;
-    this.renderCards();
+
+    this.received[channel] = true;
+    this.states[channel] = next;
+    this.renderChannel(channel);
+
+    if (message && changed.length > 0) {
+      const lastAction = changed[changed.length - 1];
+      const button = this.actions.indexOf(lastAction) + 1;
+      const state = next[lastAction] ? 'DOWN' : 'UP';
+      const seq = Number.isFinite(Number(message.seq)) ? ` · seq ${message.seq}` : '';
+      document.getElementById('last-event').textContent = `${channel}-${button} ${state}${seq}`;
+    }
   }
 
-  renderCards() {
+  renderChannel(channel) {
     for (const action of this.actions) {
-      const card = document.querySelector(`[data-input-action="${action}"]`);
-      const pressed = this.state[action];
+      const card = document.querySelector(`[data-channel="${channel}"][data-action="${action}"]`);
+      const pressed = this.states[channel][action];
       card.classList.toggle('pressed', pressed);
-      card.querySelector('.button-state').textContent = pressed ? '눌림' : '대기';
+      card.querySelector('.button-state').textContent = pressed ? 'DOWN' : 'UP';
+      card.querySelector('[data-count]').textContent = String(this.counts[channel][action]);
     }
+  }
+
+  renderSelectedChannel() {
+    const selected = this.network.selectedChannel;
+    document.getElementById('selected-channel').textContent = selected;
+    document.querySelectorAll('[data-channel-panel]').forEach((panel) => {
+      panel.classList.toggle('selected', panel.dataset.channelPanel === selected);
+    });
+    document.querySelectorAll('[data-channel-link]').forEach((link) => {
+      link.classList.toggle('active', link.dataset.channelLink === selected);
+    });
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => new FourButtonTest());
+window.addEventListener('DOMContentLoaded', () => new TwelveButtonTest());

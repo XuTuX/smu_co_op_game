@@ -59,11 +59,13 @@ async function runTest() {
     browserWs = new WebSocket(`ws://127.0.0.1:${APP_PORT}`);
     let esp32Connected = null;
     let relayedInput = null;
+    let relayedStatus = null;
 
     browserWs.on('message', (data) => {
       const payload = JSON.parse(data.toString());
       if (payload.type === 'esp32_status') esp32Connected = payload.connected;
-      if (payload.type === 'input') relayedInput = payload.data;
+      if (payload.type === 'input') relayedInput = payload;
+      if (payload.type === 'system_status') relayedStatus = payload;
     });
 
     await new Promise((resolve, reject) => {
@@ -74,14 +76,25 @@ async function runTest() {
     await waitFor(() => esp32Connected === true, 'browser ESP32-connected status');
 
     bridgeSocket.send(JSON.stringify({
+      type: 'system_status', hub: true, controller: true, controllerId: 1
+    }));
+    await waitFor(() => relayedStatus && relayedStatus.controller === true, 'controller system status relay');
+
+    bridgeSocket.send(JSON.stringify({
       type: 'input',
+      controller: 1,
+      channel: 'B',
+      seq: 152,
       data: { forward: true, backward: false, left: true, right: false }
     }));
-    await waitFor(() => relayedInput && relayedInput.forward && relayedInput.left, 'button input relay');
+    await waitFor(() => relayedInput && relayedInput.data.forward && relayedInput.data.left, 'button input relay');
+    if (relayedInput.channel !== 'B' || relayedInput.controller !== 1 || relayedInput.seq !== 152) {
+      throw new Error(`Channel metadata was not preserved: ${JSON.stringify(relayedInput)}`);
+    }
 
     bridgeSocket.close();
     await waitFor(() => esp32Connected === false, 'browser ESP32-disconnected status');
-    console.log('✅ ESP32 SOFTAP BRIDGE TEST PASSED: AP input and status relay work end-to-end');
+    console.log('✅ ESP32 SOFTAP BRIDGE TEST PASSED: channel input and system status relay end-to-end');
   } finally {
     if (browserWs) browserWs.close();
     serverProcess.kill('SIGTERM');

@@ -35,6 +35,7 @@ const browserClients = new Set();
 let esp32Socket = null;
 let esp32LastSeen = 0;
 let esp32ReconnectTimer = null;
+let latestSystemStatus = { hub: false, controller: false, controllerId: 1 };
 
 // Get local IPv4 addresses for user convenience
 function getLocalIpAddresses() {
@@ -62,11 +63,17 @@ function broadcastToBrowsers(messageObj) {
 
 // Notify browsers about ESP32 connection state
 function updateEsp32Status(connected) {
+  latestSystemStatus = { hub: connected, controller: connected, controllerId: 1 };
   broadcastToBrowsers({
     type: 'esp32_status',
     connected: connected,
     timestamp: Date.now()
   });
+}
+
+function normalizeChannel(channel) {
+  const normalized = String(channel || '').toUpperCase();
+  return ['A', 'B', 'C'].includes(normalized) ? normalized : 'A';
 }
 
 // Sanitize & validate input payload
@@ -101,10 +108,27 @@ function handleEsp32Payload(payload, ws, sourceLabel) {
       broadcastToBrowsers({
         type: 'input',
         source: 'esp32',
+        controller: Number(payload.controller) || 1,
+        channel: normalizeChannel(payload.channel),
+        ...(Number.isFinite(Number(payload.seq)) ? { seq: Number(payload.seq) } : {}),
         data: sanitized,
         timestamp: Date.now()
       });
     }
+    return;
+  }
+
+  if (payload.type === 'system_status') {
+    latestSystemStatus = {
+      hub: Boolean(payload.hub),
+      controller: Boolean(payload.controller),
+      controllerId: Number(payload.controllerId) || 1
+    };
+    broadcastToBrowsers({
+      type: 'system_status',
+      ...latestSystemStatus,
+      timestamp: Date.now()
+    });
     return;
   }
 
@@ -198,6 +222,11 @@ wss.on('connection', (ws, req) => {
             connected: isEsp32Connected(),
             timestamp: Date.now()
           }));
+          ws.send(JSON.stringify({
+            type: 'system_status',
+            ...latestSystemStatus,
+            timestamp: Date.now()
+          }));
         }
         return;
       }
@@ -206,6 +235,12 @@ wss.on('connection', (ws, req) => {
       if (payload.type === 'input' || ('forward' in payload && 'backward' in payload)) {
         if (clientRole !== 'esp32') clientRole = 'esp32';
         handleEsp32Payload(payload, ws, `legacy inbound connection from ${remoteIp}`);
+        return;
+      }
+
+      if (payload.type === 'system_status') {
+        if (clientRole !== 'esp32') clientRole = 'esp32';
+        handleEsp32Payload(payload, ws, `status connection from ${remoteIp}`);
         return;
       }
 
