@@ -47,10 +47,10 @@
         <div id="rope-callout" class="rope-callout hidden" aria-live="assertive"></div>
 
         <div class="rope-player-controls" aria-label="단체 줄넘기 조작 버튼">
-          <button class="rope-player-button p1" type="button" data-action="forward" aria-label="P1 점프"><strong>W</strong></button>
-          <button class="rope-player-button p2" type="button" data-action="backward" aria-label="P2 점프"><strong>S</strong></button>
-          <button class="rope-player-button p3" type="button" data-action="left" aria-label="P3 점프"><strong>A</strong></button>
-          <button class="rope-player-button p4" type="button" data-action="right" aria-label="P4 점프"><strong>D</strong></button>
+          <button class="rope-player-button p1" type="button" data-action="forward" aria-label="노랑 점프"></button>
+          <button class="rope-player-button p2" type="button" data-action="backward" aria-label="빨강 점프"></button>
+          <button class="rope-player-button p3" type="button" data-action="left" aria-label="파랑 점프"></button>
+          <button class="rope-player-button p4" type="button" data-action="right" aria-label="초록 점프"></button>
         </div>
 
         <div id="rope-countdown" class="overlay countdown-overlay hidden">
@@ -62,18 +62,19 @@
             <h2 class="modal-title">단체 줄넘기</h2>
             <p class="modal-subtitle">버튼을 눌러 준비하세요.</p>
             <div class="role-grid">
-              <div class="role-card role-p1" data-ready-action="forward"><span class="role-badge">P1</span><strong>점프</strong><button class="ready-tap" type="button" data-action="forward">준비</button></div>
-              <div class="role-card role-p2" data-ready-action="backward"><span class="role-badge">P2</span><strong>점프</strong><button class="ready-tap" type="button" data-action="backward">준비</button></div>
-              <div class="role-card role-p3" data-ready-action="left"><span class="role-badge">P3</span><strong>점프</strong><button class="ready-tap" type="button" data-action="left">준비</button></div>
-              <div class="role-card role-p4" data-ready-action="right"><span class="role-badge">P4</span><strong>점프</strong><button class="ready-tap" type="button" data-action="right">준비</button></div>
+              <div class="role-card role-p1" data-ready-action="forward"><strong>노랑</strong><button class="ready-tap" type="button" data-action="forward">준비</button></div>
+              <div class="role-card role-p2" data-ready-action="backward"><strong>빨강</strong><button class="ready-tap" type="button" data-action="backward">준비</button></div>
+              <div class="role-card role-p3" data-ready-action="left"><strong>파랑</strong><button class="ready-tap" type="button" data-action="left">준비</button></div>
+              <div class="role-card role-p4" data-ready-action="right"><strong>초록</strong><button class="ready-tap" type="button" data-action="right">준비</button></div>
             </div>
             <div id="rope-ready-progress" class="ready-progress rope-ready-progress" aria-live="polite">0 / 4</div>
           </div>
         </div>
 
-        <div id="rope-gameover-modal" class="overlay modal-overlay hidden">
+        <div id="rope-gameover-modal" class="overlay modal-overlay gameover-overlay hidden">
           <div class="modal-card gameover-card">
-            <h2 id="rope-gameover-message" class="modal-title">게임 종료</h2>
+            <span class="gameover-kicker">게임 종료</span>
+            <h2 id="rope-gameover-message" class="modal-title gameover-message">수고하셨습니다!</h2>
             <div class="score-summary rope-summary">
               <div class="summary-box"><span class="summary-label">점수</span><strong id="rope-final-score">0</strong></div>
               <div class="summary-box"><span class="summary-label">성공</span><strong id="rope-perfect-count">0</strong></div>
@@ -87,6 +88,7 @@
   </div>
 
   <script src="js/sound.js"></script>
+  <script src="js/game-over.js"></script>
   <script src="js/input.js"></script>
   <script src="js/network.js"></script>
   <script src="js/jump-rope.js"></script>

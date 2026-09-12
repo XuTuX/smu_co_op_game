@@ -207,6 +207,47 @@ class SoundEngine {
     } catch (e) {}
   }
 
+  /** 게임 종료용 "루~우~" 하강 글라이드 효과음. */
+  playGameOver() {
+    if (this.isMuted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const glide = this.ctx.createOscillator();
+      const glideGain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      glide.type = 'sawtooth';
+      glide.frequency.setValueAtTime(660, now);
+      glide.frequency.exponentialRampToValueAtTime(140, now + 1.15);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2200, now);
+      filter.frequency.exponentialRampToValueAtTime(360, now + 1.15);
+      glideGain.gain.setValueAtTime(0.0001, now);
+      glideGain.gain.exponentialRampToValueAtTime(0.22, now + 0.06);
+      glideGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.25);
+
+      glide.connect(filter);
+      filter.connect(glideGain);
+      glideGain.connect(this.ctx.destination);
+      glide.start(now);
+      glide.stop(now + 1.3);
+
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(330, now);
+      sub.frequency.exponentialRampToValueAtTime(80, now + 1.2);
+      subGain.gain.setValueAtTime(0.0001, now);
+      subGain.gain.exponentialRampToValueAtTime(0.16, now + 0.08);
+      subGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 1.25);
+    } catch (e) {}
+  }
+
   playLaser() {
     if (this.isMuted || !this.ctx) return;
     try {

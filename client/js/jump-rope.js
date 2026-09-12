@@ -64,7 +64,7 @@ class TeamJumpRopeGame {
     this.countdownInterval = null;
     this.countdownHideTimer = null;
     this.calloutTimer = null;
-    this.passPulse = 0;
+    this.failPulse = 0;
 
     this.bindUI();
     this.inputManager.onChange((inputs) => {
@@ -241,7 +241,7 @@ class TeamJumpRopeGame {
     this.particles = [];
     this.shake = 0;
     this.hitFreeze = 0;
-    this.passPulse = 0;
+    this.failPulse = 0;
     this.applyRoundMode(false);
     this.inputManager.resetAll();
     this.previousPlayInputs = this.createReadyState();
@@ -319,7 +319,7 @@ class TeamJumpRopeGame {
     }
 
     this.elapsed += dt;
-    this.passPulse = Math.max(0, this.passPulse - dt * 2.8);
+    this.failPulse = Math.max(0, this.failPulse - dt * 2.8);
     this.feverRemaining = Math.max(0, this.feverRemaining - dt);
     this.shake = Math.max(0, this.shake - dt * 25);
 
@@ -363,14 +363,13 @@ class TeamJumpRopeGame {
       if (shouldJump && jumped) {
         player.clears++;
         this.score += multiplier;
-        player.flash = 0.25;
-        this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), player.color, 7);
       } else if ((shouldJump && !jumped) || (!shouldJump && jumped)) {
         allClear = false;
+        player.flash = 0.7;
+        this.spawnBurst(player.x, this.groundY - Math.max(70, player.height), '#fb7185', 10);
       }
     }
     this.roundCount++;
-    this.passPulse = 1;
     if (allClear) {
       this.perfectCount++;
       this.combo++;
@@ -382,6 +381,7 @@ class TeamJumpRopeGame {
       }
       this.soundEngine.playSuccess();
     } else {
+      this.failPulse = 1;
       this.sharedLives = Math.max(0, this.sharedLives - 1);
       this.combo = 0;
       this.soundEngine.playCrash();
@@ -705,14 +705,8 @@ class TeamJumpRopeGame {
     ctx.beginPath(); ctx.arc(-13, -185, 4, 0, Math.PI * 2); ctx.arc(13, -185, 4, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(0, -170, 11, 0.1, Math.PI - 0.1); ctx.stroke();
 
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#181229';
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.roundRect(-29, -128, 58, 41, 12); ctx.fill(); ctx.stroke();
     ctx.fillStyle = player.dark;
-    ctx.font = '950 22px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(player.label, 0, -100);
+    ctx.beginPath(); ctx.ellipse(0, -104, 27, 22, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 
     this.canvas.dataset[`p${index + 1}Height`] = player.height.toFixed(1);
@@ -738,8 +732,8 @@ class TeamJumpRopeGame {
     ropes.filter((rope) => rope.geometry.front).forEach((rope) => this.drawRope(rope.angle, rope.secondary));
     this.drawEffects();
 
-    if (this.passPulse > 0) {
-      ctx.fillStyle = `rgba(255,255,255,${this.passPulse * 0.12})`;
+    if (this.failPulse > 0) {
+      ctx.fillStyle = `rgba(239,68,68,${this.failPulse * 0.18})`;
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     ctx.restore();

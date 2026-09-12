@@ -122,9 +122,10 @@
           </div>
         </div>
 
-        <div id="gameover-modal" class="overlay modal-overlay hidden">
+        <div id="gameover-modal" class="overlay modal-overlay gameover-overlay hidden">
           <div class="modal-card gameover-card">
-            <h2 id="final-result-title" class="modal-title">게임 종료</h2>
+            <span class="gameover-kicker">게임 종료</span>
+            <h2 id="final-result-title" class="modal-title gameover-message">수고하셨습니다!</h2>
             <div class="score-summary">
               <div class="summary-box"><span class="summary-label">점수</span><strong id="final-score">0</strong></div>
               <div class="summary-box"><span class="summary-label">주차</span><strong id="final-park-count">0</strong></div>
@@ -141,6 +142,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/sound.js"></script>
+  <script src="js/game-over.js"></script>
   <script src="js/map.js"></script>
   <script src="js/collision.js"></script>
   <script src="js/parking.js"></script>

@@ -624,6 +624,15 @@ kbd {
 .is-playing .utility-footer { display: none; }
 .hidden { display: none !important; }
 
+/* 게임 종료: 루~우~ 효과음 뒤에 점수판이 위에서 내려오고 배경은 살짝 어두워진다. */
+.gameover-overlay { background: rgba(20, 16, 40, 0.62); backdrop-filter: blur(3px); }
+.gameover-overlay.is-revealing { animation: gameover-dim 420ms ease-out both; }
+.gameover-overlay.is-revealing .gameover-card { animation: gameover-drop 660ms cubic-bezier(.2, .85, .25, 1.05) both; }
+.gameover-kicker { display: inline-block; margin-bottom: 10px; border: 2px solid var(--ink); border-radius: 999px; background: var(--yellow); padding: 5px 13px; font-size: 11px; font-weight: 900; letter-spacing: .04em; }
+.gameover-message { font-size: clamp(24px, 3.6vw, 40px); }
+@keyframes gameover-dim { from { background: rgba(20, 16, 40, 0); } to { background: rgba(20, 16, 40, 0.62); } }
+@keyframes gameover-drop { 0% { transform: translateY(-64vh) rotate(-2.5deg); opacity: 0; } 55% { opacity: 1; } 80% { transform: translateY(14px) rotate(.6deg); } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } }
+
 @keyframes modal-enter { from { transform: translateY(18px) rotate(-1deg); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes blink-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes countdown-pop { 0% { transform: scale(.35) rotate(-8deg); opacity: 0; } 60% { transform: scale(1.1) rotate(2deg); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }

@@ -53,12 +53,17 @@
   touch-action: none;
   transition: transform 80ms ease, box-shadow 80ms ease, filter 80ms ease;
 }
-.rope-player-button strong { display: block; font-size: 26px; line-height: 1; }
 .rope-player-button.p1 { background: #facc15; }
 .rope-player-button.p2 { background: #fb7185; }
 .rope-player-button.p3 { background: #38bdf8; }
 .rope-player-button.p4 { background: #4ade80; }
 .rope-player-button.active, .rope-player-button:active { transform: translate(3px, 3px); box-shadow: 1px 2px 0 var(--ink); filter: brightness(1.12); }
+
+/* 단체 줄넘기 준비 카드는 캐릭터 색과 동일한 색으로만 구분한다. */
+.rope-modal .role-p1 { background: #facc15; }
+.rope-modal .role-p2 { background: #fb7185; }
+.rope-modal .role-p3 { background: #38bdf8; }
+.rope-modal .role-p4 { background: #4ade80; }
 
 .rope-summary { grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
 .rope-summary .summary-label { font-size: 16px; }
@@ -116,6 +121,5 @@
   .rope-page.is-playing .clean-stat-title { font-size: 14px; }
   .rope-player-controls { right: 8px; bottom: 8px; grid-template-columns: repeat(4, 50px); gap: 5px; }
   .rope-player-button { min-height: 52px; border-radius: 12px; box-shadow: 2px 3px 0 var(--ink); }
-  .rope-player-button strong { font-size: 19px; }
   .rope-callout { top: 102px; }
 }

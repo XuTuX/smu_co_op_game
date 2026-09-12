@@ -105,7 +105,14 @@ class ObstacleDodgeGame {
     return Object.fromEntries(Object.entries(spriteFiles).map(([name, fileName]) => {
       const image = new Image();
       image.decoding = 'async';
-      image.src = `/assets/charcter_movement/${fileName}?v=20260827-2`;
+      // Resolve next to the page first so it also works from file:// or a sub-path host,
+      // then fall back to the site-root path used by the Node server and the ESP32 hub.
+      image.src = new URL(`../assets/charcter_movement/${fileName}`, document.baseURI).href;
+      image.addEventListener('error', () => {
+        if (image.dataset.fallback === '1') return;
+        image.dataset.fallback = '1';
+        image.src = `/assets/charcter_movement/${fileName}`;
+      }, { once: true });
       return [name, image];
     }));
   }

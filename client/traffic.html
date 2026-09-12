@@ -79,9 +79,10 @@
           </div>
         </div>
 
-        <div id="traffic-gameover-modal" class="overlay modal-overlay hidden">
+        <div id="traffic-gameover-modal" class="overlay modal-overlay gameover-overlay hidden">
           <div class="modal-card gameover-card">
-            <h2 id="traffic-gameover-message" class="modal-title">게임 종료</h2>
+            <span class="gameover-kicker">게임 종료</span>
+            <h2 id="traffic-gameover-message" class="modal-title gameover-message">수고하셨습니다!</h2>
             <div class="score-summary">
               <div class="summary-box"><span class="summary-label">점수</span><strong id="traffic-final-score">0</strong></div>
             </div>
@@ -95,6 +96,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/sound.js"></script>
+  <script src="js/game-over.js"></script>
   <script src="js/input.js"></script>
   <script src="js/network.js"></script>
   <script src="js/box-character.js"></script>
