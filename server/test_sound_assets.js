@@ -60,25 +60,25 @@ music.engine.startMusic('parking');
 assert(music.engine.musicFile, 'startMusic should attach an <audio> element for the parking music');
 assert(music.engine.musicFile.loop, 'background music should loop');
 assert(
-  music.engine.musicFile.src.endsWith('bus_Game_background.mp3'),
-  'the parking game should load its own bus_Game_background.mp3'
+  music.engine.musicFile.src.endsWith('bus_Game_background.m4a'),
+  'the parking game should load the shared bus_Game_background.m4a'
 );
 assert(
-  music.events.plays.some((src) => src.endsWith('bus_Game_background.mp3')),
+  music.events.plays.some((src) => src.endsWith('bus_Game_background.m4a')),
   'the parking background music should start playing'
 );
 
-// Traffic and jump-rope keep the shared track instead of the bus song.
+// Traffic and jump-rope share the same single track to keep LittleFS small.
 const sharedMusic = createHarness();
 sharedMusic.engine.prepareMusic('traffic');
 assert(
-  sharedMusic.events.created.some((element) => element.src.endsWith('background_music.mp3')),
-  'traffic should preload the shared background_music.mp3 during the countdown'
+  sharedMusic.events.created.some((element) => element.src.endsWith('bus_Game_background.m4a')),
+  'traffic should preload the shared bus_Game_background.m4a during the countdown'
 );
 sharedMusic.engine.startMusic('traffic');
 assert(
-  sharedMusic.engine.musicFile.src.endsWith('background_music.mp3'),
-  'traffic should keep the shared background_music.mp3'
+  sharedMusic.engine.musicFile.src.endsWith('bus_Game_background.m4a'),
+  'traffic should use the same shared bus_Game_background.m4a'
 );
 
 music.engine.setMuted(true);

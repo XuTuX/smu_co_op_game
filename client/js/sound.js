@@ -46,11 +46,11 @@ class SoundEngine {
       carSound: { file: 'car_sound.mp3', volume: 0.4 },
       carCrash: { file: 'car_crush.mp3', volume: 0.95 }
     };
-    // 게임별 배경음악. 버스 주차는 전용 곡, 장애물·줄넘기는 공용 곡을 쓴다.
+    // 배경음악은 세 게임 공용 트랙 하나로 통일(LittleFS 용량 절약, 128kbps AAC).
     this.musicTracks = {
-      parking: { file: 'bus_Game_background.mp3', volume: 0.18 },
-      traffic: { file: 'background_music.mp3', volume: 0.18 },
-      rope: { file: 'background_music.mp3', volume: 0.18 }
+      parking: { file: 'bus_Game_background.m4a', volume: 0.18 },
+      traffic: { file: 'bus_Game_background.m4a', volume: 0.18 },
+      rope: { file: 'bus_Game_background.m4a', volume: 0.18 }
     };
     this.musicFileVolume = this.musicTracks.traffic.volume;
     this.musicFile = null;
@@ -199,7 +199,8 @@ class SoundEngine {
       osc.type = type;
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-      gain.gain.setValueAtTime(0.28, this.ctx.currentTime);
+      // 부저/삑 계열은 다른 효과음에 묻히지 않도록 크게(약 3배) 재생한다.
+      gain.gain.setValueAtTime(0.85, this.ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
       osc.connect(gain);
@@ -569,7 +570,8 @@ class SoundEngine {
       filter.type = 'bandpass';
       filter.frequency.setValueAtTime(1800, now);
       filter.Q.setValueAtTime(1.8, now);
-      gain.gain.setValueAtTime(0.22, now);
+      // 레이저 경고 부저도 약 3배 키운다.
+      gain.gain.setValueAtTime(0.7, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
 
       oscillator.connect(filter);
