@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMU 협동 게임 실행</title>
+  <style>
+    :root { --ink:#28231f; --cream:#fff5db; --paper:#fffdf7; --yellow:#ffd84d; --green:#89d79a; --blue:#9dd7f5; --pink:#f5a9c1; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; padding:32px 18px; color:var(--ink); background:var(--cream); font-family:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif; }
+    main { width:min(980px,100%); margin:auto; }
+    header { margin-bottom:24px; text-align:center; }
+    h1 { margin:0 0 10px; font-size:clamp(32px,7vw,58px); letter-spacing:-.055em; }
+    .lead { margin:0 auto; max-width:720px; font-weight:750; line-height:1.7; }
+    .notice { margin:22px auto; padding:15px 18px; max-width:760px; border:3px solid var(--ink); border-radius:17px; background:var(--paper); box-shadow:5px 6px 0 var(--ink); font-weight:800; line-height:1.65; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+    .card { padding:22px; border:3px solid var(--ink); border-radius:22px; background:var(--paper); box-shadow:7px 8px 0 var(--ink); }
+    .card:nth-child(1) { border-top:12px solid var(--yellow); }
+    .card:nth-child(2) { border-top:12px solid var(--blue); }
+    .card:nth-child(3) { border-top:12px solid var(--pink); }
+    h2 { margin:0 0 8px; font-size:25px; }
+    .card p { min-height:48px; margin:0 0 17px; color:#665e55; font-weight:700; line-height:1.5; }
+    .channels { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    a { color:inherit; }
+    .channel, .test { display:block; padding:11px 5px; border:2px solid var(--ink); border-radius:12px; background:#fff; text-align:center; text-decoration:none; font-weight:950; }
+    .channel:hover, .test:hover { background:var(--green); transform:translateY(-2px); }
+    .test { width:min(420px,100%); margin:28px auto 0; background:var(--green); }
+    footer { margin-top:24px; text-align:center; color:#665e55; font-size:14px; font-weight:700; line-height:1.7; }
+    code { padding:2px 6px; border-radius:6px; background:#eee4d3; }
+    @media (max-width:760px) { .grid { grid-template-columns:1fr; } .card p { min-height:0; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>게임 실행</h1>
+      <p class="lead">ESP32A·ESP32B를 켠 다음, 이 콤퓨터를 Wi-Fi <code>hihi</code>에 연결하고 아래에서 게임과 채널을 고르세요.</p>
+    </header>
+
+    <div class="notice">
+      ① Wi-Fi: <code>hihi</code> / 비밀번호: <code>12345678</code><br>
+      ② 아래 A·B·C를 누르면 게임이 새 탭에서 열립니다.<br>
+      ③ 전체 후에는 게임 화면 우측 상단에서도 채널을 바꿀 수 있습니다.
+    </div>
+
+    <section class="grid" aria-label="게임 선택">
+      <article class="card">
+        <h2>버스 주차</h2>
+        <p>지정한 채널 버튼으로 운전합니다.</p>
+        <div class="channels">
+          <a class="channel" target="_blank" href="client/index.html?channel=A">A</a>
+          <a class="channel" target="_blank" href="client/index.html?channel=B">B</a>
+          <a class="channel" target="_blank" href="client/index.html?channel=C">C</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>장애물 피하기</h2>
+        <p>지정한 채널 버튼으로 캐릭터를 조작합니다.</p>
+        <div class="channels">
+          <a class="channel" target="_blank" href="client/traffic.html?channel=A">A</a>
+          <a class="channel" target="_blank" href="client/traffic.html?channel=B">B</a>
+          <a class="channel" target="_blank" href="client/traffic.html?channel=C">C</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>단체 줄넘기</h2>
+        <p>지정한 채널 버튼으로 네 캐릭터가 점프합니다.</p>
+        <div class="channels">
+          <a class="channel" target="_blank" href="client/jump-rope.html?channel=A">A</a>
+          <a class="channel" target="_blank" href="client/jump-rope.html?channel=B">B</a>
+          <a class="channel" target="_blank" href="client/jump-rope.html?channel=C">C</a>
+        </div>
+      </article>
+    </section>
+
+    <a class="test" target="_blank" href="client/button-test.html">관리자·버튼 12개 전체 테스트</a>
+
+    <footer>
+      다른 콤퓨터에서는 <strong>이 `노트북_게임_실행용` 폴더 전체를 복사</strong>하세요.<br>
+      폴더 안의 `client`나 `assets`의 위치를 바꾸지 마세요.
+    </footer>
+  </main>
+</body>
+</html>

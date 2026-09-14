@@ -161,8 +161,9 @@ ESP32 내부의 `INPUT_PULLUP`을 사용하므로 **별도의 외부 저항 없�
 
 ```bash
 pio run -e esp32-s3-hub -t upload
-pio run -e esp32-s3-hub -t uploadfs
 ```
+
+> 현재 ESP32A는 경량 Hub입니다. `uploadfs`는 실행하지 마세요. 상세한 내용은 `ESP32A_경량화_및_노트북_실행_가이드.md`를 확인하세요.
 
 그다음 ESP32 B만 연결해 Controller 펌웨어를 업로드합니다. Controller에는 LittleFS 업로드가 필요 없습니다.
 

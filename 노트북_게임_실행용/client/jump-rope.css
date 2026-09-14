@@ -1,0 +1,125 @@
+.rope-brand { background: #8b5cf6; color: var(--paper); }
+.mode-link.rope-active { background: #8b5cf6; color: var(--paper); }
+.rope-stats { grid-template-columns: 1fr 1fr; }
+.rope-score-card { background: #c4b5fd; }
+.rope-time-card { background: #a7f3d0; transform: rotate(1deg); }
+.rope-frame { background: #17152d; }
+.rope-frame #ropeCanvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.rope-badge, .rope-ready-progress { background: #8b5cf6; color: #fff; }
+.rope-modal { width: min(820px, calc(100% - 32px)); }
+
+.rope-callout {
+  position: absolute;
+  top: 126px;
+  left: 50%;
+  z-index: 25;
+  transform: translateX(-50%) rotate(-3deg);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 4px 8px;
+  color: #fff;
+  font-size: clamp(20px, 3vw, 38px);
+  font-weight: 950;
+  letter-spacing: .06em;
+  text-shadow: 0 3px 0 #161228, 0 0 14px rgba(0,0,0,.75);
+  pointer-events: none;
+}
+.rope-command-color { display: inline; padding: 0; border: 0; background: transparent; }
+.rope-command-color.yellow { color: #facc15; }
+.rope-command-color.red { color: #fb7185; }
+.rope-command-color.blue { color: #38bdf8; }
+.rope-command-color.green { color: #4ade80; }
+
+.rope-page.is-playing .rope-callout { top: 30%; }
+
+.rope-player-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(58px, 78px));
+  gap: 8px;
+}
+
+.rope-player-button {
+  min-height: 58px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 4px 5px 0 var(--ink);
+  cursor: pointer;
+  touch-action: none;
+  transition: transform 80ms ease, box-shadow 80ms ease, filter 80ms ease;
+}
+.rope-player-button.p1 { background: #facc15; }
+.rope-player-button.p2 { background: #fb7185; }
+.rope-player-button.p3 { background: #38bdf8; }
+.rope-player-button.p4 { background: #4ade80; }
+.rope-player-button.active, .rope-player-button:active { transform: translate(3px, 3px); box-shadow: 1px 2px 0 var(--ink); filter: brightness(1.12); }
+
+/* 단체 줄넘기 준비 카드는 캐릭터 색과 동일한 색으로만 구분한다. */
+.rope-modal .role-p1 { background: #facc15; }
+.rope-modal .role-p2 { background: #fb7185; }
+.rope-modal .role-p3 { background: #38bdf8; }
+.rope-modal .role-p4 { background: #4ade80; }
+
+.rope-summary { grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
+.rope-summary .summary-label { font-size: 16px; }
+
+.rope-page.is-playing { overflow: hidden; background: #17152d; }
+.rope-page.is-playing .page-shell { width: 100%; height: 100vh; margin: 0; padding: 0; }
+.rope-page.is-playing .site-header,
+.rope-page.is-playing .mode-switch { display: none; }
+.rope-page.is-playing .rope-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #17152d;
+  box-shadow: none;
+}
+.rope-page.is-playing .game-meta-row { display: none; }
+.rope-page.is-playing .rope-stats {
+  z-index: 20;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  background: #17152d;
+}
+.rope-page.is-playing .rope-stats .stat-copy { display: none; }
+.rope-page.is-playing .rope-stats .stat-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 6px 14px;
+  border-width: 2px;
+  border-radius: 14px;
+  transform: none;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.rope-page.is-playing .rope-stats .stat-block strong { margin: 0; font-size: clamp(31px, 4.5vh, 46px); line-height: 1; }
+.rope-page.is-playing .rope-stats .stat-note { margin: 0 0 0 auto; }
+.rope-page.is-playing .rope-frame { width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+
+@media (max-width: 900px) {
+  .rope-stats { grid-template-columns: 1fr 1fr; }
+  .rope-player-controls { grid-template-columns: repeat(4, 58px); }
+  .rope-player-button { min-height: 58px; border-width: 2px; }
+}
+
+@media (max-width: 620px) {
+  .rope-page.is-playing .rope-stats .stat-block { min-height: 54px; padding: 6px 9px; gap: 8px; }
+  .rope-page.is-playing .rope-stats .stat-block strong { font-size: 29px; }
+  .rope-page.is-playing .clean-stat-title { font-size: 14px; }
+  .rope-player-controls { right: 8px; bottom: 8px; grid-template-columns: repeat(4, 50px); gap: 5px; }
+  .rope-player-button { min-height: 52px; border-radius: 12px; box-shadow: 2px 3px 0 var(--ink); }
+  .rope-callout { top: 102px; }
+}

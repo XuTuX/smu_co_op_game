@@ -14,10 +14,17 @@ const fs = require('fs');
 const path = require('path');
 
 const firmwareSources = [
-  ['ESP32 A hub (production 3-channel build)', path.join(__dirname, '..', 'src', 'hub', 'main.cpp')],
   ['ESP32 single-board build', path.join(__dirname, '..', 'src', 'main.cpp')],
   ['legacy Arduino sketch', path.join(__dirname, '..', 'esp32', 'esp32_bus_controller.ino')]
 ];
+
+// The production ESP32 A is intentionally a lightweight input-only hub. It has
+// no HTTP, DNS, or LittleFS surface: local laptop HTML talks straight to port 81.
+const lightweightHub = fs.readFileSync(path.join(__dirname, '..', 'src', 'hub', 'main.cpp'), 'utf8');
+for (const removedFeature of ['<WebServer.h>', '<DNSServer.h>', '<LittleFS.h>', 'startHttpServer']) {
+  assert(!lightweightHub.includes(removedFeature),
+    `ESP32 A must not include laptop-owned web feature: ${removedFeature}`);
+}
 
 // Each operating system's connectivity-check URL and the handler it must hit.
 const probes = [
@@ -76,4 +83,3 @@ for (const [label, file] of firmwareSources) {
 }
 
 console.log('✅ CAPTIVE PORTAL TEST PASSED: every firmware answers OS connectivity checks without opening a sign-in window');
-

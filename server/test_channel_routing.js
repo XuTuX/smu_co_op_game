@@ -70,4 +70,12 @@ legacyA.client.routeInput({ type: 'input', data: { left: true } });
 assert.strictEqual(legacyA.delivered.length, 1, 'legacy channel-less input must route to A');
 assert.strictEqual(legacyA.delivered[0].left, true);
 
-console.log('✅ CHANNEL ROUTING TEST PASSED: A/B/C isolation, legacy A fallback, and URL persistence work');
+for (const game of ['index.html', 'traffic.html', 'jump-rope.html']) {
+  for (const channel of ['A', 'B', 'C']) {
+    const selected = createClient(`?channel=${channel}`);
+    assert.strictEqual(selected.client.selectedChannel, channel,
+      `${game} must allow independent selection of channel ${channel}`);
+  }
+}
+
+console.log('✅ CHANNEL ROUTING TEST PASSED: every game supports A/B/C independently, with URL persistence');
